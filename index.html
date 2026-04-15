@@ -1,0 +1,853 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GTV - Watch Inventory & P&L Tracker</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        :root {
+            --primary: #1a237e;
+            --primary-light: #3949ab;
+            --accent: #00acc1;
+            --success: #4caf50;
+            --danger: #f44336;
+            --warning: #ff9800;
+            --bg: #f5f5f5;
+            --card-bg: #ffffff;
+            --text: #212121;
+            --text-secondary: #757575;
+            --border: #e0e0e0;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+        }
+        .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+        header {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 12px;
+            margin-bottom: 24px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+        }
+        header h1 { font-size: 2rem; margin-bottom: 8px; }
+        header p { opacity: 0.9; }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        .stat-card {
+            background: var(--card-bg);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .stat-card:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(0,0,0,0.12); }
+        .stat-card h3 { font-size: 0.875rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+        .stat-value { font-size: 1.75rem; font-weight: 700; color: var(--primary); }
+        .stat-value.positive { color: var(--success); }
+        .stat-value.negative { color: var(--danger); }
+        .stat-card.sold { border-left: 4px solid var(--success); }
+        .stat-card.inventory { border-left: 4px solid var(--accent); }
+        .stat-card.profit { border-left: 4px solid var(--success); }
+        .stat-card.investment { border-left: 4px solid var(--warning); }
+        .section { background: var(--card-bg); border-radius: 12px; padding: 24px; margin-bottom: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+        .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px; }
+        .section h2 { font-size: 1.25rem; color: var(--primary); }
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.875rem;
+            font-weight: 600;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { background: var(--primary-light); }
+        .btn-success { background: var(--success); color: white; }
+        .btn-success:hover { background: #43a047; }
+        .btn-danger { background: var(--danger); color: white; }
+        .btn-danger:hover { background: #e53935; }
+        .btn-secondary { background: var(--text-secondary); color: white; }
+        .btn-secondary:hover { background: #616161; }
+        .btn-outline { background: transparent; border: 2px solid var(--primary); color: var(--primary); }
+        .btn-outline:hover { background: var(--primary); color: white; }
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+        .chart-container { position: relative; height: 300px; }
+        .table-container { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid var(--border); }
+        th { background: var(--bg); font-weight: 600; color: var(--primary); position: sticky; top: 0; }
+        tr:hover { background: rgba(0,0,0,0.02); }
+        .editable { cursor: pointer; padding: 4px 8px; border-radius: 4px; transition: background 0.2s; }
+        .editable:hover { background: #e3f2fd; }
+        .editable input, .editable select {
+            width: 100%;
+            padding: 6px;
+            border: 2px solid var(--accent);
+            border-radius: 4px;
+            font-size: inherit;
+        }
+        .badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        .badge-in-stock { background: #e8f5e9; color: var(--success); }
+        .badge-sold { background: #e3f2fd; color: var(--primary); }
+        .badge-pending { background: #fff3e0; color: var(--warning); }
+        .profit-positive { color: var(--success); font-weight: 600; }
+        .profit-negative { color: var(--danger); font-weight: 600; }
+        .actions { display: flex; gap: 8px; }
+        .btn-sm { padding: 6px 12px; font-size: 0.75rem; }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .modal.active { display: flex; }
+        .modal-content {
+            background: var(--card-bg);
+            border-radius: 16px;
+            max-width: 600px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        .modal-header {
+            padding: 24px 24px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .modal-header h3 { font-size: 1.25rem; color: var(--primary); }
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--text-secondary);
+        }
+        .modal-body { padding: 24px; }
+        .form-group { margin-bottom: 16px; }
+        .form-group label { display: block; margin-bottom: 6px; font-weight: 500; font-size: 0.875rem; }
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.2s;
+        }
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        .modal-footer {
+            padding: 0 24px 24px;
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+        }
+        .toolbar {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 16px;
+        }
+        .search-box { position: relative; flex: 1; min-width: 200px; }
+        .search-box input {
+            width: 100%;
+            padding: 10px 12px 10px 40px;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            font-size: 0.875rem;
+        }
+        .search-box::before {
+            content: "🔍";
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+        .filter-select {
+            padding: 10px 12px;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            font-size: 0.875rem;
+            background: white;
+        }
+        .costs-list { display: flex; flex-direction: column; gap: 8px; }
+        .cost-item {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        .cost-item input { flex: 1; }
+        .cost-item button { padding: 6px 10px; }
+        .hidden-file-input { display: none; }
+        @media (max-width: 768px) {
+            .container { padding: 12px; }
+            header { padding: 20px; }
+            header h1 { font-size: 1.5rem; }
+            .charts-grid { grid-template-columns: 1fr; }
+            .form-row { grid-template-columns: 1fr; }
+            .section { padding: 16px; }
+            th, td { padding: 8px; font-size: 0.8rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>⌚ GTV Watch Inventory</h1>
+            <p>Inventory & Profit/Loss Tracking System</p>
+        </header>
+
+        <div class="stats-grid">
+            <div class="stat-card inventory">
+                <h3>Watches In Stock</h3>
+                <div class="stat-value" id="stat-in-stock">0</div>
+            </div>
+            <div class="stat-card sold">
+                <h3>Watches Sold</h3>
+                <div class="stat-value" id="stat-sold">0</div>
+            </div>
+            <div class="stat-card investment">
+                <h3>Inventory Value</h3>
+                <div class="stat-value" id="stat-inventory-value">$0</div>
+            </div>
+            <div class="stat-card profit">
+                <h3>Total Profit</h3>
+                <div class="stat-value" id="stat-total-profit">$0</div>
+            </div>
+            <div class="stat-card">
+                <h3>Total Investment</h3>
+                <div class="stat-value" id="stat-total-investment">$0</div>
+            </div>
+            <div class="stat-card">
+                <h3>Total Revenue</h3>
+                <div class="stat-value" id="stat-total-revenue">$0</div>
+            </div>
+        </div>
+
+        <div class="charts-grid">
+            <div class="section">
+                <h2>Profit Over Time</h2>
+                <div class="chart-container">
+                    <canvas id="profitChart"></canvas>
+                </div>
+            </div>
+            <div class="section">
+                <h2>Inventory by Brand</h2>
+                <div class="chart-container">
+                    <canvas id="brandChart"></canvas>
+                </div>
+            </div>
+            <div class="section">
+                <h2>Sales Trend</h2>
+                <div class="chart-container">
+                    <canvas id="salesChart"></canvas>
+                </div>
+            </div>
+            <div class="section">
+                <h2>Profit by Brand</h2>
+                <div class="chart-container">
+                    <canvas id="profitBrandChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-header">
+                <h2>Watch Inventory</h2>
+                <div>
+                    <input type="file" id="importFile" class="hidden-file-input" accept=".json" onchange="importData(event)">
+                    <button class="btn btn-outline" onclick="document.getElementById('importFile').click()">📥 Import</button>
+                    <button class="btn btn-outline" onclick="exportData()">📤 Export</button>
+                    <button class="btn btn-primary" onclick="openModal()">+ Add Watch</button>
+                </div>
+            </div>
+            <div class="toolbar">
+                <div class="search-box">
+                    <input type="text" id="searchInput" placeholder="Search watches..." onkeyup="renderTable()">
+                </div>
+                <select class="filter-select" id="statusFilter" onchange="renderTable()">
+                    <option value="">All Status</option>
+                    <option value="In Stock">In Stock</option>
+                    <option value="Sold">Sold</option>
+                    <option value="Pending">Pending</option>
+                </select>
+                <select class="filter-select" id="brandFilter" onchange="renderTable()">
+                    <option value="">All Brands</option>
+                </select>
+            </div>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>SKU</th>
+                            <th>Brand</th>
+                            <th>Model</th>
+                            <th>Purchase Date</th>
+                            <th>Purchase Price</th>
+                            <th>Sale Date</th>
+                            <th>Sale Price</th>
+                            <th>Additional Costs</th>
+                            <th>Status</th>
+                            <th>Profit</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="inventoryTable"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="watchModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modalTitle">Add Watch</h3>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="watchForm">
+                    <input type="hidden" id="watchId">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>SKU *</label>
+                            <input type="text" id="sku" required placeholder="e.g., GTV-001">
+                        </div>
+                        <div class="form-group">
+                            <label>Status</label>
+                            <select id="status">
+                                <option value="In Stock">In Stock</option>
+                                <option value="Sold">Sold</option>
+                                <option value="Pending">Pending</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Brand *</label>
+                            <input type="text" id="brand" required placeholder="e.g., Rolex">
+                        </div>
+                        <div class="form-group">
+                            <label>Model *</label>
+                            <input type="text" id="model" required placeholder="e.g., Submariner">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Purchase Date *</label>
+                            <input type="date" id="purchaseDate" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Purchase Price ($) *</label>
+                            <input type="number" id="purchasePrice" required min="0" step="0.01" placeholder="0.00">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Sale Date</label>
+                            <input type="date" id="saleDate">
+                        </div>
+                        <div class="form-group">
+                            <label>Sale Price ($)</label>
+                            <input type="number" id="salePrice" min="0" step="0.01" placeholder="0.00">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Additional Costs</label>
+                        <div class="costs-list" id="costsList">
+                            <div class="cost-item">
+                                <input type="text" placeholder="Cost description (e.g., Shipping)" class="cost-name">
+                                <input type="number" placeholder="Amount" class="cost-amount" min="0" step="0.01">
+                                <button type="button" class="btn btn-danger btn-sm" onclick="removeCost(this)">✕</button>
+                            </div>
+                        </div>
+                        <button type="button" class="btn btn-secondary btn-sm" onclick="addCostField()" style="margin-top: 8px;">+ Add Cost</button>
+                    </div>
+                    <div class="form-group">
+                        <label>Notes</label>
+                        <input type="text" id="notes" placeholder="Optional notes...">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="saveWatch()">Save Watch</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let watches = JSON.parse(localStorage.getItem('gtv_watches')) || [];
+        let charts = {};
+
+        const sampleData = [
+            { id: 1, sku: 'GTV-001', brand: 'Rolex', model: 'Submariner 126610LN', purchaseDate: '2024-01-15', purchasePrice: 12500, saleDate: '2024-03-20', salePrice: 14200, costs: [{name: 'Shipping', amount: 150}, {name: 'Service', amount: 300}], status: 'Sold', notes: '' },
+            { id: 2, sku: 'GTV-002', brand: 'Omega', model: 'Speedmaster Professional', purchaseDate: '2024-02-01', purchasePrice: 6800, saleDate: '', salePrice: 0, costs: [{name: 'Import Tax', amount: 450}], status: 'In Stock', notes: '' },
+            { id: 3, sku: 'GTV-003', brand: 'Patek Philippe', model: 'Nautilus 5711', purchaseDate: '2024-01-20', purchasePrice: 85000, saleDate: '2024-04-05', salePrice: 92000, costs: [{name: 'Authentication', amount: 500}], status: 'Sold', notes: '' },
+            { id: 4, sku: 'GTV-004', brand: 'Audemars Piguet', model: 'Royal Oak 15500', purchaseDate: '2024-03-10', purchasePrice: 42000, saleDate: '', salePrice: 0, costs: [], status: 'In Stock', notes: '' },
+            { id: 5, sku: 'GTV-005', brand: 'Rolex', model: 'GMT-Master II', purchaseDate: '2024-02-28', purchasePrice: 15800, saleDate: '', salePrice: 17500, costs: [{name: 'Service', amount: 200}], status: 'Pending', notes: '' }
+        ];
+
+        if (watches.length === 0) {
+            watches = sampleData;
+            saveToStorage();
+        }
+
+        function saveToStorage() {
+            localStorage.setItem('gtv_watches', JSON.stringify(watches));
+        }
+
+        function generateId() {
+            return Math.max(...watches.map(w => w.id), 0) + 1;
+        }
+
+        function calculateProfit(watch) {
+            const costs = (watch.costs || []).reduce((sum, c) => sum + (parseFloat(c.amount) || 0), 0);
+            if (watch.status === 'Sold' && watch.salePrice) {
+                return parseFloat(watch.salePrice) - parseFloat(watch.purchasePrice) - costs;
+            }
+            return null;
+        }
+
+        function calculateTotalCosts(watch) {
+            return (watch.costs || []).reduce((sum, c) => sum + (parseFloat(c.amount) || 0), 0);
+        }
+
+        function formatCurrency(value) {
+            if (value === null || value === undefined) return '-';
+            return '$' + parseFloat(value).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        }
+
+        function updateStats() {
+            const inStock = watches.filter(w => w.status === 'In Stock').length;
+            const sold = watches.filter(w => w.status === 'Sold').length;
+            const inventoryValue = watches
+                .filter(w => w.status === 'In Stock')
+                .reduce((sum, w) => sum + parseFloat(w.purchasePrice) + calculateTotalCosts(w), 0);
+            const totalProfit = watches
+                .filter(w => w.status === 'Sold')
+                .reduce((sum, w) => sum + (calculateProfit(w) || 0), 0);
+            const totalInvestment = watches.reduce((sum, w) => sum + parseFloat(w.purchasePrice) + calculateTotalCosts(w), 0);
+            const totalRevenue = watches
+                .filter(w => w.status === 'Sold')
+                .reduce((sum, w) => sum + parseFloat(w.salePrice || 0), 0);
+
+            document.getElementById('stat-in-stock').textContent = inStock;
+            document.getElementById('stat-sold').textContent = sold;
+            document.getElementById('stat-inventory-value').textContent = formatCurrency(inventoryValue);
+            document.getElementById('stat-total-profit').textContent = formatCurrency(totalProfit);
+            document.getElementById('stat-total-profit').className = 'stat-value ' + (totalProfit >= 0 ? 'positive' : 'negative');
+            document.getElementById('stat-total-investment').textContent = formatCurrency(totalInvestment);
+            document.getElementById('stat-total-revenue').textContent = formatCurrency(totalRevenue);
+        }
+
+        function updateBrandFilter() {
+            const brands = [...new Set(watches.map(w => w.brand))].sort();
+            const select = document.getElementById('brandFilter');
+            select.innerHTML = '<option value="">All Brands</option>' + 
+                brands.map(b => `<option value="${b}">${b}</option>`).join('');
+        }
+
+        function renderTable() {
+            const search = document.getElementById('searchInput').value.toLowerCase();
+            const statusFilter = document.getElementById('statusFilter').value;
+            const brandFilter = document.getElementById('brandFilter').value;
+
+            let filtered = watches.filter(w => {
+                const matchesSearch = !search || 
+                    w.sku.toLowerCase().includes(search) ||
+                    w.brand.toLowerCase().includes(search) ||
+                    w.model.toLowerCase().includes(search);
+                const matchesStatus = !statusFilter || w.status === statusFilter;
+                const matchesBrand = !brandFilter || w.brand === brandFilter;
+                return matchesSearch && matchesStatus && matchesBrand;
+            });
+
+            const tbody = document.getElementById('inventoryTable');
+            tbody.innerHTML = filtered.map(watch => {
+                const profit = calculateProfit(watch);
+                const totalCosts = calculateTotalCosts(watch);
+                const costsDisplay = (watch.costs || []).map(c => `${c.name}: $${c.amount}`).join(', ') || '-';
+                
+                return `<tr>
+                    <td class="editable" onclick="editField(${watch.id}, 'sku', this)">${watch.sku}</td>
+                    <td class="editable" onclick="editField(${watch.id}, 'brand', this)">${watch.brand}</td>
+                    <td class="editable" onclick="editField(${watch.id}, 'model', this)">${watch.model}</td>
+                    <td class="editable" onclick="editField(${watch.id}, 'purchaseDate', this)">${watch.purchaseDate || '-'}</td>
+                    <td class="editable" onclick="editField(${watch.id}, 'purchasePrice', this)">${formatCurrency(watch.purchasePrice)}</td>
+                    <td class="editable" onclick="editField(${watch.id}, 'saleDate', this)">${watch.saleDate || '-'}</td>
+                    <td class="editable" onclick="editField(${watch.id}, 'salePrice', this)">${watch.salePrice ? formatCurrency(watch.salePrice) : '-'}</td>
+                    <td title="${costsDisplay}">${totalCosts > 0 ? formatCurrency(totalCosts) : '-'}</td>
+                    <td><span class="badge badge-${watch.status.toLowerCase().replace(' ', '-')}">${watch.status}</span></td>
+                    <td class="${profit !== null ? (profit >= 0 ? 'profit-positive' : 'profit-negative') : ''}">${profit !== null ? formatCurrency(profit) : '-'}</td>
+                    <td class="actions">
+                        <button class="btn btn-primary btn-sm" onclick="editWatch(${watch.id})">Edit</button>
+                        <button class="btn btn-danger btn-sm" onclick="deleteWatch(${watch.id})">Delete</button>
+                    </td>
+                </tr>`;
+            }).join('');
+        }
+
+        function editField(id, field, cell) {
+            const watch = watches.find(w => w.id === id);
+            if (!watch) return;
+
+            const currentValue = watch[field];
+            let input;
+
+            if (field === 'status') {
+                input = document.createElement('select');
+                input.innerHTML = `
+                    <option value="In Stock" ${currentValue === 'In Stock' ? 'selected' : ''}>In Stock</option>
+                    <option value="Sold" ${currentValue === 'Sold' ? 'selected' : ''}>Sold</option>
+                    <option value="Pending" ${currentValue === 'Pending' ? 'selected' : ''}>Pending</option>
+                `;
+            } else if (field.includes('Date')) {
+                input = document.createElement('input');
+                input.type = 'date';
+                input.value = currentValue || '';
+            } else if (field.includes('Price')) {
+                input = document.createElement('input');
+                input.type = 'number';
+                input.step = '0.01';
+                input.value = currentValue || '';
+            } else {
+                input = document.createElement('input');
+                input.type = 'text';
+                input.value = currentValue || '';
+            }
+
+            cell.innerHTML = '';
+            cell.appendChild(input);
+            input.focus();
+
+            const save = () => {
+                let value = input.value;
+                if (field.includes('Price')) {
+                    value = parseFloat(value) || 0;
+                }
+                watch[field] = value;
+                saveToStorage();
+                updateAll();
+            };
+
+            input.addEventListener('blur', save);
+            input.addEventListener('keypress', (e) => { if (e.key === 'Enter') save(); });
+        }
+
+        function updateCharts() {
+            const soldWatches = watches.filter(w => w.status === 'Sold' && w.saleDate);
+            
+            // Profit Over Time
+            const profitByMonth = {};
+            soldWatches.forEach(w => {
+                const month = w.saleDate.substring(0, 7);
+                profitByMonth[month] = (profitByMonth[month] || 0) + calculateProfit(w);
+            });
+            const sortedMonths = Object.keys(profitByMonth).sort();
+            
+            if (charts.profit) charts.profit.destroy();
+            charts.profit = new Chart(document.getElementById('profitChart'), {
+                type: 'line',
+                data: {
+                    labels: sortedMonths,
+                    datasets: [{
+                        label: 'Profit',
+                        data: sortedMonths.map(m => profitByMonth[m]),
+                        borderColor: '#4caf50',
+                        backgroundColor: 'rgba(76, 175, 80, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { beginAtZero: true, ticks: { callback: v => '$' + v.toLocaleString() } }
+                    }
+                }
+            });
+
+            // Inventory by Brand
+            const brandCounts = {};
+            watches.filter(w => w.status === 'In Stock').forEach(w => {
+                brandCounts[w.brand] = (brandCounts[w.brand] || 0) + 1;
+            });
+            
+            if (charts.brand) charts.brand.destroy();
+            charts.brand = new Chart(document.getElementById('brandChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(brandCounts),
+                    datasets: [{
+                        data: Object.values(brandCounts),
+                        backgroundColor: ['#1a237e', '#3949ab', '#00acc1', '#4caf50', '#ff9800', '#f44336']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false
+                }
+            });
+
+            // Sales Trend
+            const salesByMonth = {};
+            soldWatches.forEach(w => {
+                const month = w.saleDate.substring(0, 7);
+                salesByMonth[month] = (salesByMonth[month] || 0) + 1;
+            });
+            
+            if (charts.sales) charts.sales.destroy();
+            charts.sales = new Chart(document.getElementById('salesChart'), {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(salesByMonth).sort(),
+                    datasets: [{
+                        label: 'Watches Sold',
+                        data: Object.keys(salesByMonth).sort().map(m => salesByMonth[m]),
+                        backgroundColor: '#00acc1'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } }
+                }
+            });
+
+            // Profit by Brand
+            const profitByBrand = {};
+            soldWatches.forEach(w => {
+                profitByBrand[w.brand] = (profitByBrand[w.brand] || 0) + calculateProfit(w);
+            });
+            
+            if (charts.profitBrand) charts.profitBrand.destroy();
+            charts.profitBrand = new Chart(document.getElementById('profitBrandChart'), {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(profitByBrand),
+                    datasets: [{
+                        label: 'Profit',
+                        data: Object.values(profitByBrand),
+                        backgroundColor: Object.values(profitByBrand).map(v => v >= 0 ? '#4caf50' : '#f44336')
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { ticks: { callback: v => '$' + v.toLocaleString() } }
+                    }
+                }
+            });
+        }
+
+        function updateAll() {
+            updateStats();
+            updateBrandFilter();
+            renderTable();
+            updateCharts();
+        }
+
+        function openModal() {
+            document.getElementById('watchForm').reset();
+            document.getElementById('watchId').value = '';
+            document.getElementById('modalTitle').textContent = 'Add Watch';
+            document.getElementById('costsList').innerHTML = `
+                <div class="cost-item">
+                    <input type="text" placeholder="Cost description" class="cost-name">
+                    <input type="number" placeholder="Amount" class="cost-amount" min="0" step="0.01">
+                    <button type="button" class="btn btn-danger btn-sm" onclick="removeCost(this)">✕</button>
+                </div>
+            `;
+            document.getElementById('watchModal').classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('watchModal').classList.remove('active');
+        }
+
+        function addCostField() {
+            const div = document.createElement('div');
+            div.className = 'cost-item';
+            div.innerHTML = `
+                <input type="text" placeholder="Cost description" class="cost-name">
+                <input type="number" placeholder="Amount" class="cost-amount" min="0" step="0.01">
+                <button type="button" class="btn btn-danger btn-sm" onclick="removeCost(this)">✕</button>
+            `;
+            document.getElementById('costsList').appendChild(div);
+        }
+
+        function removeCost(btn) {
+            btn.parentElement.remove();
+        }
+
+        function editWatch(id) {
+            const watch = watches.find(w => w.id === id);
+            if (!watch) return;
+
+            document.getElementById('watchId').value = watch.id;
+            document.getElementById('sku').value = watch.sku;
+            document.getElementById('brand').value = watch.brand;
+            document.getElementById('model').value = watch.model;
+            document.getElementById('purchaseDate').value = watch.purchaseDate;
+            document.getElementById('purchasePrice').value = watch.purchasePrice;
+            document.getElementById('saleDate').value = watch.saleDate || '';
+            document.getElementById('salePrice').value = watch.salePrice || '';
+            document.getElementById('status').value = watch.status;
+            document.getElementById('notes').value = watch.notes || '';
+
+            const costsList = document.getElementById('costsList');
+            if (watch.costs && watch.costs.length > 0) {
+                costsList.innerHTML = watch.costs.map(c => `
+                    <div class="cost-item">
+                        <input type="text" placeholder="Cost description" class="cost-name" value="${c.name}">
+                        <input type="number" placeholder="Amount" class="cost-amount" min="0" step="0.01" value="${c.amount}">
+                        <button type="button" class="btn btn-danger btn-sm" onclick="removeCost(this)">✕</button>
+                    </div>
+                `).join('');
+            } else {
+                costsList.innerHTML = `
+                    <div class="cost-item">
+                        <input type="text" placeholder="Cost description" class="cost-name">
+                        <input type="number" placeholder="Amount" class="cost-amount" min="0" step="0.01">
+                        <button type="button" class="btn btn-danger btn-sm" onclick="removeCost(this)">✕</button>
+                    </div>
+                `;
+            }
+
+            document.getElementById('modalTitle').textContent = 'Edit Watch';
+            document.getElementById('watchModal').classList.add('active');
+        }
+
+        function saveWatch() {
+            const id = document.getElementById('watchId').value;
+            const costs = [];
+            document.querySelectorAll('.cost-item').forEach(item => {
+                const name = item.querySelector('.cost-name').value.trim();
+                const amount = parseFloat(item.querySelector('.cost-amount').value) || 0;
+                if (name && amount > 0) {
+                    costs.push({ name, amount });
+                }
+            });
+
+            const watchData = {
+                sku: document.getElementById('sku').value.trim(),
+                brand: document.getElementById('brand').value.trim(),
+                model: document.getElementById('model').value.trim(),
+                purchaseDate: document.getElementById('purchaseDate').value,
+                purchasePrice: parseFloat(document.getElementById('purchasePrice').value) || 0,
+                saleDate: document.getElementById('saleDate').value,
+                salePrice: parseFloat(document.getElementById('salePrice').value) || 0,
+                status: document.getElementById('status').value,
+                notes: document.getElementById('notes').value.trim(),
+                costs: costs
+            };
+
+            if (!watchData.sku || !watchData.brand || !watchData.model || !watchData.purchaseDate) {
+                alert('Please fill in all required fields');
+                return;
+            }
+
+            if (id) {
+                const index = watches.findIndex(w => w.id === parseInt(id));
+                if (index !== -1) {
+                    watches[index] = { ...watches[index], ...watchData };
+                }
+            } else {
+                watches.push({ id: generateId(), ...watchData });
+            }
+
+            saveToStorage();
+            closeModal();
+            updateAll();
+        }
+
+        function deleteWatch(id) {
+            if (confirm('Are you sure you want to delete this watch?')) {
+                watches = watches.filter(w => w.id !== id);
+                saveToStorage();
+                updateAll();
+            }
+        }
+
+        function exportData() {
+            const dataStr = JSON.stringify(watches, null, 2);
+            const blob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `gtv-inventory-${new Date().toISOString().split('T')[0]}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function importData(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    if (Array.isArray(data)) {
+                        watches = data;
+                        saveToStorage();
+                        updateAll();
+                        alert('Data imported successfully!');
+                    } else {
+                        alert('Invalid data format');
+                    }
+                } catch (err) {
+                    alert('Error reading file: ' + err.message);
+                }
+            };
+            reader.readAsText(file);
+            event.target.value = '';
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', updateAll);
+
+        // Close modal on outside click
+        document.getElementById('watchModal').addEventListener('click', (e) => {
+            if (e.target.id === 'watchModal') closeModal();
+        });
+    </script>
+</body>
+</html>
