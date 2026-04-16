@@ -38,8 +38,8 @@
         header h1 { font-size: 2rem; margin-bottom: 4px; }
         header p { opacity: 0.9; }
         .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
+            display: flex;
+            flex-wrap: wrap;
             gap: 12px;
             margin-bottom: 24px;
         }
@@ -49,16 +49,25 @@
             border-radius: 10px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.08);
             transition: transform 0.2s, box-shadow 0.2s;
+            flex: 1;
+            min-width: 200px;
+            max-width: calc(25% - 9px);
+        }
+        @media (max-width: 1200px) {
+            .stat-card { max-width: calc(50% - 6px); }
+        }
+        @media (max-width: 600px) {
+            .stat-card { max-width: 100%; }
         }
         .stat-card:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(0,0,0,0.12); }
         .stat-card h3 { font-size: 0.65rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
         .stat-value { font-size: 1.25rem; font-weight: 700; color: var(--primary); }
         .stat-value.positive { color: var(--success); }
         .stat-value.negative { color: var(--danger); }
-        .stat-card.sold { border-left: 4px solid var(--success); }
-        .stat-card.inventory { border-left: 4px solid var(--accent); }
-        .stat-card.profit { border-left: 4px solid var(--success); }
-        .stat-card.investment { border-left: 4px solid var(--warning); }
+        .stat-card.revenue { border-left: 4px solid var(--success); }
+        .stat-card.costs { border-left: 4px solid var(--warning); }
+        .stat-card.profit { border-left: 4px solid var(--accent); }
+        .stat-card.inventory { border-left: 4px solid var(--primary-light); }
         .section { background: var(--card-bg); border-radius: 10px; padding: 24px; margin-bottom: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
         .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px; }
         .section h2 { font-size: 1.25rem; color: var(--primary); }
@@ -509,29 +518,22 @@
         </header>
 
         <div class="stats-grid">
-            <div class="stat-card inventory">
-                <h3>Watches In Stock</h3>
-                <div class="stat-value" id="stat-in-stock">0</div>
+            <div class="stat-card revenue">
+                <h3>Total Revenue</h3>
+                <div class="stat-value" id="stat-total-revenue">\$0</div>
             </div>
-            <div class="stat-card sold">
-                <h3>Watches Sold</h3>
-                <div class="stat-value" id="stat-sold">0</div>
-            </div>
-            <div class="stat-card investment">
-                <h3>Inventory Value</h3>
-                <div class="stat-value" id="stat-inventory-value">$0</div>
+            <div class="stat-card costs">
+                <h3>Total Costs</h3>
+                <div class="stat-value" id="stat-total-costs">\$0</div>
             </div>
             <div class="stat-card profit">
-                <h3>Total Profit</h3>
-                <div class="stat-value" id="stat-total-profit">$0</div>
+                <h3>Profit</h3>
+                <div class="stat-value" id="stat-profit">\$0</div>
             </div>
-        </div>
-
-        <div class="charts-grid">
-            <div class="section"><h2>Profit Over Time</h2><div class="chart-container"><canvas id="profitChart"></canvas></div></div>
-            <div class="section"><h2>Inventory by Brand</h2><div class="chart-container"><canvas id="brandChart"></canvas></div></div>
-            <div class="section"><h2>Sales Trend</h2><div class="chart-container"><canvas id="salesChart"></canvas></div></div>
-            <div class="section"><h2>Profit by Brand</h2><div class="chart-container"><canvas id="profitBrandChart"></canvas></div></div>
+            <div class="stat-card inventory">
+                <h3>Inventory Value</h3>
+                <div class="stat-value" id="stat-inventory-value">\$0</div>
+            </div>
         </div>
 
         <div class="section">
@@ -571,6 +573,13 @@
                 </table>
             </div>
         </div>
+
+        <div class="charts-grid">
+            <div class="section"><h2>Profit Over Time</h2><div class="chart-container"><canvas id="profitChart"></canvas></div></div>
+            <div class="section"><h2>Inventory by Brand</h2><div class="chart-container"><canvas id="brandChart"></canvas></div></div>
+            <div class="section"><h2>Sales Trend</h2><div class="chart-container"><canvas id="salesChart"></canvas></div></div>
+            <div class="section"><h2>Profit by Brand</h2><div class="chart-container"><canvas id="profitBrandChart"></canvas></div></div>
+        </div>
     </div>
 
     <div class="modal-overlay" id="editModal">
@@ -583,7 +592,6 @@
                 <form id="editForm">
                     <input type="hidden" id="editWatchId">
                     
-                    <!-- Image Upload Section with Tabs -->
                     <div class="form-section">
                         <h4>📷 Watch Photo</h4>
                         <div class="image-tabs">
@@ -591,7 +599,6 @@
                             <button type="button" class="image-tab" id="tabUrl" onclick="switchImageTab('url')">🔗 Paste URL</button>
                         </div>
                         
-                        <!-- Upload Tab -->
                         <div id="uploadTabContent">
                             <div class="image-upload-section" id="imageUploadSection">
                                 <input type="file" id="imageUploadInput" class="image-upload-input" accept="image/jpeg,image/png,image/webp,image/jpg" onchange="handleImageUpload(event)">
@@ -607,7 +614,6 @@
                             </div>
                         </div>
                         
-                        <!-- URL Tab -->
                         <div id="urlTabContent" class="hidden">
                             <div class="url-input-container">
                                 <div class="url-input-row">
@@ -712,7 +718,7 @@
 
         function formatCurrency(value) {
             if (value === null || value === undefined || value === '') return '-';
-            return '$' + parseFloat(value).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            return '\$' + parseFloat(value).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
         }
 
         function formatPercent(value) {
@@ -741,39 +747,48 @@
         }
 
         function updateStats() {
-            const inStock = watches.filter(w => w.status === 'In Stock').length;
-            const sold = watches.filter(w => w.status === 'Sold').length;
-            const inventoryValue = watches.filter(w => w.status === 'In Stock' || w.status === 'Pending').reduce((sum, w) => sum + (parseFloat(w.totalCost) || 0), 0);
-            const totalProfit = watches.filter(w => w.status === 'Sold').reduce((sum, w) => sum + (parseFloat(w.profit) || 0), 0);
+            // Total Revenue: Sum of all sale prices for sold watches
+            const totalRevenue = watches
+                .filter(w => w.status === 'Sold')
+                .reduce((sum, w) => sum + (parseFloat(w.salePrice) || 0), 0);
+            
+            // Total Costs: Sum of all total costs for ALL watches
+            const totalCosts = watches
+                .reduce((sum, w) => sum + (parseFloat(w.totalCost) || 0), 0);
+            
+            // Profit: Total Revenue - Total Costs
+            const profit = totalRevenue - totalCosts;
+            
+            // Inventory Value: Sum of total costs for unsold (In Stock) watches
+            const inventoryValue = watches
+                .filter(w => w.status === 'In Stock')
+                .reduce((sum, w) => sum + (parseFloat(w.totalCost) || 0), 0);
 
-            document.getElementById('stat-in-stock').textContent = inStock;
-            document.getElementById('stat-sold').textContent = sold;
+            document.getElementById('stat-total-revenue').textContent = formatCurrency(totalRevenue);
+            document.getElementById('stat-total-costs').textContent = formatCurrency(totalCosts);
+            document.getElementById('stat-profit').textContent = formatCurrency(profit);
+            document.getElementById('stat-profit').className = 'stat-value ' + (profit >= 0 ? 'positive' : 'negative');
             document.getElementById('stat-inventory-value').textContent = formatCurrency(inventoryValue);
-            document.getElementById('stat-total-profit').textContent = formatCurrency(totalProfit);
-            document.getElementById('stat-total-profit').className = 'stat-value ' + (totalProfit >= 0 ? 'positive' : 'negative');
         }
 
         function updateBrandFilter() {
             const brands = [...new Set(watches.map(w => w.brand))].sort();
             const select = document.getElementById('brandFilter');
             const currentValue = select.value;
-            select.innerHTML = '<option value="">All Brands</option>' + brands.map(b => `<option value="${b}">${b}</option>`).join('');
+            select.innerHTML = '<option value="">All Brands</option>' + brands.map(b => '<option value="' + b + '">' + b + '</option>').join('');
             select.value = currentValue;
         }
 
-        // Image handling functions
         function handleImageUpload(event) {
             const file = event.target.files[0];
             if (!file) return;
 
-            // Check file size (max 5MB)
             if (file.size > MAX_IMAGE_SIZE_MB * 1024 * 1024) {
-                alert(`Image too large. Maximum size is ${MAX_IMAGE_SIZE_MB}MB.`);
+                alert('Image too large. Maximum size is ' + MAX_IMAGE_SIZE_MB + 'MB.');
                 event.target.value = '';
                 return;
             }
 
-            // Check file type
             const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg'];
             if (!validTypes.includes(file.type)) {
                 alert('Invalid file type. Please use JPG, PNG, or WebP.');
@@ -815,7 +830,6 @@
             showImagePreview('');
         }
 
-        // Image tab switching
         function switchImageTab(tab) {
             const uploadTab = document.getElementById('tabUpload');
             const urlTab = document.getElementById('tabUrl');
@@ -835,13 +849,11 @@
             }
         }
 
-        // URL handling functions
         function handleImageUrlInput() {
             const urlInput = document.getElementById('imageUrlInput');
             const urlError = document.getElementById('urlError');
             const url = urlInput.value.trim();
             
-            // Basic URL validation
             const isValidUrl = url === '' || /^https?:\/\//.test(url);
             
             if (!isValidUrl) {
@@ -884,12 +896,11 @@
         }
 
         function getThumbnailHtml(watch) {
-            // Priority: uploaded image > URL > placeholder
             const imageSrc = watch.image || watch.imageUrl;
             if (imageSrc) {
-                return `<img src="${imageSrc}" class="watch-thumbnail" alt="${watch.brand} ${watch.model}" onerror="this.parentElement.innerHTML='<div class=\'watch-thumbnail-placeholder\' title=\'No photo\'>⌚</div>'">`;
+                return '<img src="' + imageSrc + '" class="watch-thumbnail" alt="' + watch.brand + ' ' + watch.model + '" onerror="this.parentElement.innerHTML=\'<div class=\\\'watch-thumbnail-placeholder\\\' title=\\\'No photo\\\'>⌚</div>\'">';
             } else {
-                return `<div class="watch-thumbnail-placeholder" title="No photo">⌚</div>`;
+                return '<div class="watch-thumbnail-placeholder" title="No photo">⌚</div>';
             }
         }
 
@@ -914,34 +925,34 @@
                 const marginClass = (watch.margin || 0) >= 0 ? 'margin-positive' : 'margin-negative';
                 const statusClass = 'badge-' + (watch.status || 'in-stock').toLowerCase().replace(' ', '-');
                 
-                return `<tr onclick="openEditModal(${watch.id})">
-                    <td class="text-center">${getThumbnailHtml(watch)}</td>
-                    <td class="nowrap">${watch.sku || '-'}</td>
-                    <td class="nowrap">${watch.brand || '-'}</td>
-                    <td>${watch.model || '-'}</td>
-                    <td>${watch.description || '-'}</td>
-                    <td class="nowrap">${watch.reference || '-'}</td>
-                    <td class="nowrap">${watch.year || '-'}</td>
-                    <td class="text-center">${watch.size || '-'}</td>
-                    <td>${watch.dial || '-'}</td>
-                    <td>${watch.caseMat || '-'}</td>
-                    <td>${watch.strap || '-'}</td>
-                    <td class="text-right nowrap">${formatDate(watch.purchaseDate)}</td>
-                    <td class="text-right nowrap">${formatCurrency(watch.purchasePrice)}</td>
-                    <td class="text-right nowrap">${formatCurrency(watch.tariffsTax)}</td>
-                    <td class="text-right nowrap">${formatCurrency(watch.service)}</td>
-                    <td class="text-right nowrap">${formatCurrency(watch.otherCosts)}</td>
-                    <td class="text-right nowrap">${formatCurrency(watch.totalCost)}</td>
-                    <td class="text-right nowrap">${watch.salePrice ? formatCurrency(watch.salePrice) : '-'}</td>
-                    <td>${watch.platform || '-'}</td>
-                    <td class="text-right nowrap">${formatCurrency(watch.shipping)}</td>
-                    <td class="text-right nowrap">${formatDate(watch.saleDate)}</td>
-                    <td class="text-right nowrap">${watch.net ? formatCurrency(watch.net) : '-'}</td>
-                    <td class="text-right nowrap ${profitClass}">${formatCurrency(watch.profit)}</td>
-                    <td class="text-right nowrap ${marginClass}">${formatPercent(watch.margin)}</td>
-                    <td><span class="badge ${statusClass}">${watch.status}</span></td>
-                    <td class="actions-cell"><button class="action-btn delete" onclick="event.stopPropagation(); deleteWatch(${watch.id})">Delete</button></td>
-                </tr>`;
+                return '<tr onclick="openEditModal(' + watch.id + ')">' +
+                    '<td class="text-center">' + getThumbnailHtml(watch) + '</td>' +
+                    '<td class="nowrap">' + (watch.sku || '-') + '</td>' +
+                    '<td class="nowrap">' + (watch.brand || '-') + '</td>' +
+                    '<td>' + (watch.model || '-') + '</td>' +
+                    '<td>' + (watch.description || '-') + '</td>' +
+                    '<td class="nowrap">' + (watch.reference || '-') + '</td>' +
+                    '<td class="nowrap">' + (watch.year || '-') + '</td>' +
+                    '<td class="text-center">' + (watch.size || '-') + '</td>' +
+                    '<td>' + (watch.dial || '-') + '</td>' +
+                    '<td>' + (watch.caseMat || '-') + '</td>' +
+                    '<td>' + (watch.strap || '-') + '</td>' +
+                    '<td class="text-right nowrap">' + formatDate(watch.purchaseDate) + '</td>' +
+                    '<td class="text-right nowrap">' + formatCurrency(watch.purchasePrice) + '</td>' +
+                    '<td class="text-right nowrap">' + formatCurrency(watch.tariffsTax) + '</td>' +
+                    '<td class="text-right nowrap">' + formatCurrency(watch.service) + '</td>' +
+                    '<td class="text-right nowrap">' + formatCurrency(watch.otherCosts) + '</td>' +
+                    '<td class="text-right nowrap">' + formatCurrency(watch.totalCost) + '</td>' +
+                    '<td class="text-right nowrap">' + (watch.salePrice ? formatCurrency(watch.salePrice) : '-') + '</td>' +
+                    '<td>' + (watch.platform || '-') + '</td>' +
+                    '<td class="text-right nowrap">' + formatCurrency(watch.shipping) + '</td>' +
+                    '<td class="text-right nowrap">' + formatDate(watch.saleDate) + '</td>' +
+                    '<td class="text-right nowrap">' + (watch.net ? formatCurrency(watch.net) : '-') + '</td>' +
+                    '<td class="text-right nowrap ' + profitClass + '">' + formatCurrency(watch.profit) + '</td>' +
+                    '<td class="text-right nowrap ' + marginClass + '">' + formatPercent(watch.margin) + '</td>' +
+                    '<td><span class="badge ' + statusClass + '">' + watch.status + '</span></td>' +
+                    '<td class="actions-cell"><button class="action-btn delete" onclick="event.stopPropagation(); deleteWatch(' + watch.id + ')">Delete</button></td>' +
+                '</tr>';
             }).join('');
         }
 
@@ -972,13 +983,11 @@
             document.getElementById('editShipping').value = watch.shipping || '';
             document.getElementById('editPlatformFee').value = watch.platformFee || '';
             
-            // Handle image - reset tabs to upload
             switchImageTab('upload');
             document.getElementById('editImageData').value = watch.image || '';
             document.getElementById('editImageUrl').value = watch.imageUrl || '';
             showImagePreview(watch.image || '');
             
-            // Set URL input if exists
             document.getElementById('imageUrlInput').value = watch.imageUrl || '';
             if (watch.imageUrl) {
                 document.getElementById('urlImagePreview').src = watch.imageUrl;
@@ -994,7 +1003,6 @@
 
         function closeModal() {
             document.getElementById('editModal').classList.remove('active');
-            // Reset image upload
             document.getElementById('imageUploadInput').value = '';
         }
 
@@ -1073,15 +1081,15 @@
                 container.innerHTML = savedViews.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)).map(view => {
                     const date = new Date(view.timestamp).toLocaleString();
                     const watchCount = view.watches ? view.watches.length : 0;
-                    return `<div class="view-item">
-                        <div class="view-item-info" onclick="loadView(${view.id})">
-                            <h4>${escapeHtml(view.name)}</h4>
-                            <span>${date} • ${watchCount} watches</span>
-                        </div>
-                        <div class="view-item-actions">
-                            <button class="btn btn-sm btn-danger" onclick="event.stopPropagation(); deleteViewItem(${view.id})">Delete</button>
-                        </div>
-                    </div>`;
+                    return '<div class="view-item">' +
+                        '<div class="view-item-info" onclick="loadView(' + view.id + ')">' +
+                            '<h4>' + escapeHtml(view.name) + '</h4>' +
+                            '<span>' + date + ' • ' + watchCount + ' watches</span>' +
+                        '</div>' +
+                        '<div class="view-item-actions">' +
+                            '<button class="btn btn-sm btn-danger" onclick="event.stopPropagation(); deleteViewItem(' + view.id + ')">Delete</button>' +
+                        '</div>' +
+                    '</div>';
                 }).join('');
             }
 
@@ -1097,7 +1105,7 @@
             const view = savedViews.find(v => v.id === viewId);
             if (!view || !view.watches) return;
 
-            if (confirm(`Load view "${view.name}"? This will replace your current data.`)) {
+            if (confirm('Load view "' + view.name + '"? This will replace your current data.')) {
                 watches = JSON.parse(JSON.stringify(view.watches));
                 watches.forEach(w => calculateWatch(w));
                 updateAll();
@@ -1147,7 +1155,7 @@
                     maintainAspectRatio: false,
                     plugins: { legend: { display: false } },
                     scales: {
-                        y: { beginAtZero: true, ticks: { callback: v => '$' + v.toLocaleString() } }
+                        y: { beginAtZero: true, ticks: { callback: v => '\$' + v.toLocaleString() } }
                     }
                 }
             });
@@ -1218,7 +1226,7 @@
                     maintainAspectRatio: false,
                     plugins: { legend: { display: false } },
                     scales: {
-                        y: { ticks: { callback: v => '$' + v.toLocaleString() } }
+                        y: { ticks: { callback: v => '\$' + v.toLocaleString() } }
                     }
                 }
             });
