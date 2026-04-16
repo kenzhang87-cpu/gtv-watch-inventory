@@ -34,9 +34,13 @@
             border-radius: 10px;
             margin-bottom: 24px;
             box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
         header h1 { font-size: 2rem; margin-bottom: 4px; }
         header p { opacity: 0.9; }
+        .header-info { flex: 1; }
         .stats-grid {
             display: flex;
             flex-wrap: wrap;
@@ -188,6 +192,10 @@
             opacity: 1;
             visibility: visible;
         }
+        .modal-overlay.always-visible {
+            opacity: 1;
+            visibility: visible;
+        }
         .modal {
             background: var(--card-bg);
             border-radius: 10px;
@@ -200,7 +208,7 @@
             transform: scale(0.95);
             transition: transform 0.3s;
         }
-        .modal-overlay.active .modal {
+        .modal-overlay.active .modal, .modal-overlay.always-visible .modal {
             transform: scale(1);
         }
         .modal-header {
@@ -322,8 +330,6 @@
             padding: 40px;
             color: var(--text-secondary);
         }
-
-        /* Image Upload Styles */
         .image-upload-section {
             border: 2px dashed var(--border);
             border-radius: 10px;
@@ -341,9 +347,7 @@
             border-color: var(--success);
             background: #e8f5e9;
         }
-        .image-upload-input {
-            display: none;
-        }
+        .image-upload-input { display: none; }
         .image-upload-label {
             display: flex;
             flex-direction: column;
@@ -352,27 +356,16 @@
             cursor: pointer;
             color: var(--text-secondary);
         }
-        .image-upload-icon {
-            font-size: 3rem;
-            opacity: 0.5;
-        }
-        .image-upload-text {
-            font-size: 0.875rem;
-        }
-        .image-upload-hint {
-            font-size: 0.75rem;
-            opacity: 0.7;
-        }
+        .image-upload-icon { font-size: 3rem; opacity: 0.5; }
+        .image-upload-text { font-size: 0.875rem; }
+        .image-upload-hint { font-size: 0.75rem; opacity: 0.7; }
         .image-preview {
             max-width: 100%;
             max-height: 300px;
             border-radius: 8px;
             box-shadow: 0 4px 12px rgba(0,0,0,0.15);
         }
-        .image-preview-container {
-            position: relative;
-            display: inline-block;
-        }
+        .image-preview-container { position: relative; display: inline-block; }
         .image-remove-btn {
             position: absolute;
             top: -10px;
@@ -390,11 +383,7 @@
             justify-content: center;
             box-shadow: 0 2px 8px rgba(0,0,0,0.2);
         }
-        .image-remove-btn:hover {
-            background: #d32f2f;
-        }
-
-        /* Image Tabs */
+        .image-remove-btn:hover { background: #d32f2f; }
         .image-tabs {
             display: flex;
             gap: 0;
@@ -468,11 +457,7 @@
             font-size: 0.875rem;
             white-space: nowrap;
         }
-        .url-clear-btn:hover {
-            background: #616161;
-        }
-
-        /* Thumbnail Styles */
+        .url-clear-btn:hover { background: #616161; }
         .watch-thumbnail {
             width: 40px;
             height: 40px;
@@ -493,10 +478,74 @@
             font-size: 1.2rem;
             color: var(--text-secondary);
         }
-
+        .login-modal {
+            max-width: 400px;
+            text-align: center;
+        }
+        .login-modal .modal-body {
+            padding: 40px 32px;
+        }
+        .login-icon {
+            font-size: 4rem;
+            margin-bottom: 16px;
+        }
+        .login-title {
+            font-size: 1.5rem;
+            color: var(--primary);
+            margin-bottom: 8px;
+        }
+        .login-subtitle {
+            color: var(--text-secondary);
+            margin-bottom: 24px;
+        }
+        .login-input {
+            width: 100%;
+            padding: 14px 16px;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            font-size: 1rem;
+            text-align: center;
+            letter-spacing: 2px;
+            margin-bottom: 16px;
+        }
+        .login-input:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+        .login-input.has-error {
+            border-color: var(--danger);
+            background: #ffebee;
+        }
+        .login-error {
+            color: var(--danger);
+            font-size: 0.875rem;
+            margin-bottom: 16px;
+            min-height: 20px;
+        }
+        .login-btn {
+            width: 100%;
+            padding: 14px;
+            font-size: 1rem;
+        }
+        .logout-btn {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.4);
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.875rem;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        .logout-btn:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        #mainContent { display: none; }
+        #mainContent.authenticated { display: block; }
         @media (max-width: 768px) {
             .container { padding: 12px; }
-            header { padding: 12px 16px; }
+            header { padding: 12px 16px; flex-direction: column; gap: 12px; }
             header h1 { font-size: 1.5rem; }
             .charts-grid { grid-template-columns: 1fr; }
             .section { padding: 16px; }
@@ -511,74 +560,92 @@
     </style>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>⌚ GTV Watch Inventory</h1>
-            <p>Inventory & Profit/Loss Tracking System</p>
-        </header>
-
-        <div class="stats-grid">
-            <div class="stat-card revenue">
-                <h3>Total Revenue</h3>
-                <div class="stat-value" id="stat-total-revenue">\$0</div>
-            </div>
-            <div class="stat-card costs">
-                <h3>Total Costs</h3>
-                <div class="stat-value" id="stat-total-costs">\$0</div>
-            </div>
-            <div class="stat-card profit">
-                <h3>Profit</h3>
-                <div class="stat-value" id="stat-profit">\$0</div>
-            </div>
-            <div class="stat-card inventory">
-                <h3>Inventory Value</h3>
-                <div class="stat-value" id="stat-inventory-value">\$0</div>
+    <div class="modal-overlay always-visible" id="loginModal">
+        <div class="modal login-modal">
+            <div class="modal-body">
+                <div class="login-icon">⌚</div>
+                <h2 class="login-title">GTV Watch Inventory</h2>
+                <p class="login-subtitle">Enter password to access</p>
+                <input type="password" id="loginPassword" class="login-input" placeholder="Password" onkeypress="if(event.key==='Enter')doLogin()">
+                <div class="login-error" id="loginError"></div>
+                <button class="btn btn-primary login-btn" onclick="doLogin()">Unlock</button>
             </div>
         </div>
+    </div>
 
-        <div class="section">
-            <div class="section-header">
-                <h2>Watch Inventory</h2>
-                <div>
-                    <button class="btn btn-primary" onclick="addNewWatch()">+ Add Watch</button>
-                    <button class="btn btn-success" onclick="openSaveViewModal()">💾 Save View</button>
-                    <button class="btn btn-warning" onclick="openLoadViewModal()">📂 Load View</button>
-                    <button class="btn btn-outline" onclick="exportData()">⬇️ Export JSON</button>
-                    <button class="btn btn-outline" onclick="document.getElementById('importFile').click()">⬆️ Import JSON</button>
-                    <input type="file" id="importFile" class="hidden" accept=".json" onchange="importData(event)">
+    <div id="mainContent">
+        <div class="container">
+            <header>
+                <div class="header-info">
+                    <h1>⌚ GTV Watch Inventory</h1>
+                    <p>Inventory & Profit/Loss Tracking System</p>
+                </div>
+                <button class="logout-btn" onclick="doLogout()">🔒 Logout</button>
+            </header>
+
+            <div class="stats-grid">
+                <div class="stat-card revenue">
+                    <h3>Total Revenue</h3>
+                    <div class="stat-value" id="stat-total-revenue">\$0</div>
+                </div>
+                <div class="stat-card costs">
+                    <h3>Total Costs</h3>
+                    <div class="stat-value" id="stat-total-costs">\$0</div>
+                </div>
+                <div class="stat-card profit">
+                    <h3>Profit</h3>
+                    <div class="stat-value" id="stat-profit">\$0</div>
+                </div>
+                <div class="stat-card inventory">
+                    <h3>Inventory Value</h3>
+                    <div class="stat-value" id="stat-inventory-value">\$0</div>
                 </div>
             </div>
-            <div class="toolbar">
-                <div class="search-box"><input type="text" id="searchInput" placeholder="Search watches..." onkeyup="renderTable()"></div>
-                <select class="filter-select" id="statusFilter" onchange="renderTable()">
-                    <option value="">All Status</option>
-                    <option value="In Stock">In Stock</option>
-                    <option value="Sold">Sold</option>
-                    <option value="Pending">Pending</option>
-                </select>
-                <select class="filter-select" id="brandFilter" onchange="renderTable()"><option value="">All Brands</option></select>
-            </div>
-            <div class="table-container">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Photo</th>
-                            <th>SKU</th><th>Brand</th><th>Model</th><th>Description</th><th>Reference</th><th>Year</th><th>Size</th><th>Dial</th><th>Case</th><th>Strap</th>
-                            <th class="text-right">Purchase Date</th><th class="text-right">Purchase Price</th><th class="text-right">Tariffs/Tax</th><th class="text-right">Service/Parts</th><th class="text-right">Other Costs</th><th class="text-right">Total Cost</th>
-                            <th class="text-right">Sale Price</th><th>Platform</th><th class="text-right">Shipping Out</th><th class="text-right">Sale Date</th>
-                            <th class="text-right">Net Proceeds</th><th class="text-right">Gross Profit</th><th class="text-right">Margin</th><th>Status</th><th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="inventoryTable"></tbody>
-                </table>
-            </div>
-        </div>
 
-        <div class="charts-grid">
-            <div class="section"><h2>Profit Over Time</h2><div class="chart-container"><canvas id="profitChart"></canvas></div></div>
-            <div class="section"><h2>Inventory by Brand</h2><div class="chart-container"><canvas id="brandChart"></canvas></div></div>
-            <div class="section"><h2>Sales Trend</h2><div class="chart-container"><canvas id="salesChart"></canvas></div></div>
-            <div class="section"><h2>Profit by Brand</h2><div class="chart-container"><canvas id="profitBrandChart"></canvas></div></div>
+            <div class="section">
+                <div class="section-header">
+                    <h2>Watch Inventory</h2>
+                    <div>
+                        <button class="btn btn-primary" onclick="addNewWatch()">+ Add Watch</button>
+                        <button class="btn btn-success" onclick="openSaveViewModal()">💾 Save View</button>
+                        <button class="btn btn-warning" onclick="openLoadViewModal()">📂 Load View</button>
+                        <button class="btn btn-outline" onclick="exportData()">⬇️ Export JSON</button>
+                        <button class="btn btn-outline" onclick="document.getElementById('importFile').click()">⬆️ Import JSON</button>
+                        <input type="file" id="importFile" class="hidden" accept=".json" onchange="importData(event)">
+                    </div>
+                </div>
+                <div class="toolbar">
+                    <div class="search-box"><input type="text" id="searchInput" placeholder="Search watches..." onkeyup="renderTable()"></div>
+                    <select class="filter-select" id="statusFilter" onchange="renderTable()">
+                        <option value="">All Status</option>
+                        <option value="In Stock">In Stock</option>
+                        <option value="Sold">Sold</option>
+                        <option value="Pending">Pending</option>
+                    </select>
+                    <select class="filter-select" id="brandFilter" onchange="renderTable()"><option value="">All Brands</option></select>
+                </div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Photo</th>
+                                <th>SKU</th><th>Brand</th><th>Model</th><th>Description</th><th>Reference</th><th>Year</th><th>Size</th><th>Dial</th><th>Case</th><th>Strap</th>
+                                <th class="text-right">Purchase Date</th><th class="text-right">Purchase Price</th><th class="text-right">Tariffs/Tax</th><th class="text-right">Service/Parts</th><th class="text-right">Other Costs</th><th class="text-right">Total Cost</th>
+                                <th class="text-right">Sale Price</th><th>Platform</th><th class="text-right">Shipping Out</th><th class="text-right">Sale Date</th>
+                                <th class="text-right">Net Proceeds</th><th class="text-right">Gross Profit</th><th class="text-right">Margin</th><th>Status</th><th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="inventoryTable"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="charts-grid">
+                <div class="section"><h2>Profit Over Time</h2><div class="chart-container"><canvas id="profitChart"></canvas></div></div>
+                <div class="section"><h2>Inventory by Brand</h2><div class="chart-container"><canvas id="brandChart"></canvas></div></div>
+                <div class="section"><h2>Sales Trend</h2><div class="chart-container"><canvas id="salesChart"></canvas></div></div>
+                <div class="section"><h2>Profit by Brand</h2><div class="chart-container"><canvas id="profitBrandChart"></canvas></div></div>
+            </div>
         </div>
     </div>
 
@@ -591,14 +658,12 @@
             <div class="modal-body">
                 <form id="editForm">
                     <input type="hidden" id="editWatchId">
-                    
                     <div class="form-section">
                         <h4>📷 Watch Photo</h4>
                         <div class="image-tabs">
                             <button type="button" class="image-tab active" id="tabUpload" onclick="switchImageTab('upload')">📁 Upload File</button>
                             <button type="button" class="image-tab" id="tabUrl" onclick="switchImageTab('url')">🔗 Paste URL</button>
                         </div>
-                        
                         <div id="uploadTabContent">
                             <div class="image-upload-section" id="imageUploadSection">
                                 <input type="file" id="imageUploadInput" class="image-upload-input" accept="image/jpeg,image/png,image/webp,image/jpg" onchange="handleImageUpload(event)">
@@ -613,7 +678,6 @@
                                 </div>
                             </div>
                         </div>
-                        
                         <div id="urlTabContent" class="hidden">
                             <div class="url-input-container">
                                 <div class="url-input-row">
@@ -629,7 +693,6 @@
                                 </div>
                             </div>
                         </div>
-                        
                         <input type="hidden" id="editImageData">
                         <input type="hidden" id="editImageUrl">
                     </div>
@@ -701,6 +764,43 @@
     </div>
 
     <script>
+        const CORRECT_PASSWORD = 'Lenny365';
+        const AUTH_KEY = 'gtv_auth';
+
+        function checkAuth() {
+            if (sessionStorage.getItem(AUTH_KEY) === 'true') {
+                showMainContent();
+            }
+        }
+
+        function doLogin() {
+            const passwordInput = document.getElementById('loginPassword');
+            const errorDiv = document.getElementById('loginError');
+            const password = passwordInput.value;
+
+            if (password === CORRECT_PASSWORD) {
+                sessionStorage.setItem(AUTH_KEY, 'true');
+                showMainContent();
+            } else {
+                passwordInput.classList.add('has-error');
+                errorDiv.textContent = 'Incorrect password. Please try again.';
+                passwordInput.value = '';
+                passwordInput.focus();
+            }
+        }
+
+        function doLogout() {
+            sessionStorage.removeItem(AUTH_KEY);
+            location.reload();
+        }
+
+        function showMainContent() {
+            document.getElementById('loginModal').classList.remove('always-visible');
+            document.getElementById('loginModal').style.display = 'none';
+            document.getElementById('mainContent').classList.add('authenticated');
+            updateAll();
+        }
+
         let watches = [
             {id:1,sku:'001',brand:'Omega',model:'Seamaster 30 Linen Dial',description:'',reference:'125.003-62',year:'1962-63',size:35,dial:'Silver',caseMat:'Stainless Steel',strap:'Leather',purchaseDate:'2026-01-14',purchasePrice:687.50,tariffsTax:55.19,service:377,otherCosts:0,totalCost:1119.69,salePrice:1800,platform:'Chrono24',platformFee:117,shipping:100,net:1583,profit:463.31,margin:25.74,status:'Sold',saleDate:'2026-01-20',image:'',imageUrl:''},
             {id:2,sku:'002',brand:'Vacheron Constantin',model:'4322 18k Shell Lugs',description:'',reference:'4322',year:'1945',size:35.5,dial:'White',caseMat:'14k Gold',strap:'Leather',purchaseDate:'2026-01-08',purchasePrice:4106.40,tariffsTax:501,service:450,otherCosts:0,totalCost:5057.40,salePrice:6750,platform:'eBay',platformFee:495,shipping:100,net:6155,profit:1097.60,margin:16.26,status:'Sold',saleDate:'2026-02-15',image:''},
@@ -747,22 +847,10 @@
         }
 
         function updateStats() {
-            // Total Revenue: Sum of all sale prices for sold watches
-            const totalRevenue = watches
-                .filter(w => w.status === 'Sold')
-                .reduce((sum, w) => sum + (parseFloat(w.salePrice) || 0), 0);
-            
-            // Total Costs: Sum of all total costs for ALL watches
-            const totalCosts = watches
-                .reduce((sum, w) => sum + (parseFloat(w.totalCost) || 0), 0);
-            
-            // Profit: Total Revenue - Total Costs
+            const totalRevenue = watches.filter(w => w.status === 'Sold').reduce((sum, w) => sum + (parseFloat(w.salePrice) || 0), 0);
+            const totalCosts = watches.reduce((sum, w) => sum + (parseFloat(w.totalCost) || 0), 0);
             const profit = totalRevenue - totalCosts;
-            
-            // Inventory Value: Sum of total costs for unsold (In Stock) watches
-            const inventoryValue = watches
-                .filter(w => w.status === 'In Stock')
-                .reduce((sum, w) => sum + (parseFloat(w.totalCost) || 0), 0);
+            const inventoryValue = watches.filter(w => w.status === 'In Stock').reduce((sum, w) => sum + (parseFloat(w.totalCost) || 0), 0);
 
             document.getElementById('stat-total-revenue').textContent = formatCurrency(totalRevenue);
             document.getElementById('stat-total-costs').textContent = formatCurrency(totalCosts);
@@ -782,20 +870,17 @@
         function handleImageUpload(event) {
             const file = event.target.files[0];
             if (!file) return;
-
             if (file.size > MAX_IMAGE_SIZE_MB * 1024 * 1024) {
                 alert('Image too large. Maximum size is ' + MAX_IMAGE_SIZE_MB + 'MB.');
                 event.target.value = '';
                 return;
             }
-
             const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg'];
             if (!validTypes.includes(file.type)) {
                 alert('Invalid file type. Please use JPG, PNG, or WebP.');
                 event.target.value = '';
                 return;
             }
-
             const reader = new FileReader();
             reader.onload = function(e) {
                 const imageData = e.target.result;
@@ -864,7 +949,6 @@
             } else {
                 urlInput.classList.remove('has-error');
                 urlError.classList.add('hidden');
-                
                 if (url) {
                     document.getElementById('urlImagePreview').src = url;
                     document.getElementById('editImageUrl').value = url;
@@ -896,11 +980,15 @@
         }
 
         function getThumbnailHtml(watch) {
-            const imageSrc = watch.image || watch.imageUrl;
-            if (imageSrc) {
-                return '<img src="' + imageSrc + '" class="watch-thumbnail" alt="' + watch.brand + ' ' + watch.model + '" onerror="this.parentElement.innerHTML=\'<div class=\\\'watch-thumbnail-placeholder\\\' title=\\\'No photo\\\'>⌚</div>\'">';
+            const hasUploadedImage = watch.image && watch.image.trim() !== '';
+            const hasUrlImage = watch.imageUrl && watch.imageUrl.trim() !== '';
+            
+            if (hasUploadedImage) {
+                return '<img src="' + watch.image + '" class="watch-thumbnail" alt="' + (watch.brand || '') + ' ' + (watch.model || '') + '" onerror="this.onerror=null; this.style.display=\'none\'; this.nextElementSibling.style.display=\'flex\';" style="display:block;"><div class="watch-thumbnail-placeholder" style="display:none;">⌚</div>';
+            } else if (hasUrlImage) {
+                return '<img src="' + watch.imageUrl + '" class="watch-thumbnail" alt="' + (watch.brand || '') + ' ' + (watch.model || '') + '" onerror="this.onerror=null; this.style.display=\'none\'; this.nextElementSibling.style.display=\'flex\';" style="display:block;"><div class="watch-thumbnail-placeholder" style="display:none;">⌚</div>';
             } else {
-                return '<div class="watch-thumbnail-placeholder" title="No photo">⌚</div>';
+                return '<div class="watch-thumbnail-placeholder">⌚</div>';
             }
         }
 
@@ -1292,7 +1380,6 @@
         function importData(event) {
             const file = event.target.files[0];
             if (!file) return;
-            
             const reader = new FileReader();
             reader.onload = function(e) {
                 try {
@@ -1338,7 +1425,9 @@
             if (e.target === this) closeLoadViewModal();
         });
 
-        document.addEventListener('DOMContentLoaded', updateAll);
+        document.addEventListener('DOMContentLoaded', function() {
+            checkAuth();
+        });
     </script>
 </body>
 </html>
