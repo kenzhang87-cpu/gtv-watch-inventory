@@ -183,7 +183,7 @@
             background: var(--card-bg);
             border-radius: 12px;
             width: 90%;
-            max-width: 800px;
+            max-width: 900px;
             max-height: 90vh;
             overflow: hidden;
             display: flex;
@@ -313,6 +313,100 @@
             padding: 40px;
             color: var(--text-secondary);
         }
+
+        /* Image Upload Styles */
+        .image-upload-section {
+            border: 2px dashed var(--border);
+            border-radius: 12px;
+            padding: 24px;
+            text-align: center;
+            transition: all 0.3s;
+            background: var(--bg);
+        }
+        .image-upload-section:hover {
+            border-color: var(--accent);
+            background: rgba(0,172,193,0.05);
+        }
+        .image-upload-section.has-image {
+            border-style: solid;
+            border-color: var(--success);
+            background: #e8f5e9;
+        }
+        .image-upload-input {
+            display: none;
+        }
+        .image-upload-label {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            cursor: pointer;
+            color: var(--text-secondary);
+        }
+        .image-upload-icon {
+            font-size: 3rem;
+            opacity: 0.5;
+        }
+        .image-upload-text {
+            font-size: 0.875rem;
+        }
+        .image-upload-hint {
+            font-size: 0.75rem;
+            opacity: 0.7;
+        }
+        .image-preview {
+            max-width: 100%;
+            max-height: 300px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        .image-preview-container {
+            position: relative;
+            display: inline-block;
+        }
+        .image-remove-btn {
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            background: var(--danger);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 28px;
+            height: 28px;
+            cursor: pointer;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+        .image-remove-btn:hover {
+            background: #d32f2f;
+        }
+
+        /* Thumbnail Styles */
+        .watch-thumbnail {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            object-fit: cover;
+            border: 2px solid var(--border);
+            background: var(--bg);
+        }
+        .watch-thumbnail-placeholder {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            background: var(--bg);
+            border: 2px dashed var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            color: var(--text-secondary);
+        }
+
         @media (max-width: 768px) {
             .container { padding: 12px; }
             header { padding: 20px; }
@@ -322,6 +416,10 @@
             th, td { padding: 8px; font-size: 0.75rem; }
             .modal { width: 95%; max-height: 95vh; }
             .form-grid { grid-template-columns: 1fr; }
+            .watch-thumbnail, .watch-thumbnail-placeholder {
+                width: 32px;
+                height: 32px;
+            }
         }
     </style>
 </head>
@@ -396,6 +494,7 @@
                 <table>
                     <thead>
                         <tr>
+                            <th>Photo</th>
                             <th>SKU</th><th>Brand</th><th>Model</th><th>Description</th><th>Reference</th><th>Year</th><th>Size</th><th>Dial</th><th>Case</th><th>Strap</th>
                             <th class="text-right">Purchase Date</th><th class="text-right">Purchase Price</th><th class="text-right">Tariffs/Tax</th><th class="text-right">Service/Parts</th><th class="text-right">Other Costs</th><th class="text-right">Total Cost</th>
                             <th class="text-right">Sale Price</th><th>Platform</th><th class="text-right">Shipping Out</th><th class="text-right">Sale Date</th>
@@ -417,6 +516,25 @@
             <div class="modal-body">
                 <form id="editForm">
                     <input type="hidden" id="editWatchId">
+                    
+                    <!-- Image Upload Section -->
+                    <div class="form-section">
+                        <h4>📷 Watch Photo</h4>
+                        <div class="image-upload-section" id="imageUploadSection">
+                            <input type="file" id="imageUploadInput" class="image-upload-input" accept="image/jpeg,image/png,image/webp,image/jpg" onchange="handleImageUpload(event)">
+                            <label for="imageUploadInput" class="image-upload-label" id="imageUploadLabel">
+                                <span class="image-upload-icon">📷</span>
+                                <span class="image-upload-text">Click to upload watch photo</span>
+                                <span class="image-upload-hint">JPG, PNG, or WebP (max 5MB)</span>
+                            </label>
+                            <div id="imagePreviewContainer" class="image-preview-container hidden">
+                                <img id="imagePreview" class="image-preview" src="" alt="Watch preview">
+                                <button type="button" class="image-remove-btn" onclick="removeImage()" title="Remove image">&times;</button>
+                            </div>
+                        </div>
+                        <input type="hidden" id="editImageData">
+                    </div>
+
                     <div class="form-section">
                         <h4>Basic Information</h4>
                         <div class="form-grid">
@@ -485,18 +603,19 @@
 
     <script>
         let watches = [
-            {id:1,sku:'001',brand:'Omega',model:'Seamaster 30 Linen Dial',description:'',reference:'125.003-62',year:'1962-63',size:35,dial:'Silver',caseMat:'Stainless Steel',strap:'Leather',purchaseDate:'2026-01-14',purchasePrice:687.50,tariffsTax:55.19,service:377,otherCosts:0,totalCost:1119.69,salePrice:1800,platform:'Chrono24',platformFee:117,shipping:100,net:1583,profit:463.31,margin:25.74,status:'Sold',saleDate:'2026-01-20'},
-            {id:2,sku:'002',brand:'Vacheron Constantin',model:'4322 18k Shell Lugs',description:'',reference:'4322',year:'1945',size:35.5,dial:'White',caseMat:'14k Gold',strap:'Leather',purchaseDate:'2026-01-08',purchasePrice:4106.40,tariffsTax:501,service:450,otherCosts:0,totalCost:5057.40,salePrice:6750,platform:'eBay',platformFee:495,shipping:100,net:6155,profit:1097.60,margin:16.26,status:'Sold',saleDate:'2026-02-15'},
-            {id:3,sku:'003',brand:'Tudor',model:'Prince Date+Day Jumbo Blue Dial Italian Day',description:'',reference:'7019/4',year:'1969-70',size:38,dial:'Blue',caseMat:'Stainless Steel',strap:'Stainless Steel',purchaseDate:'2026-01-14',purchasePrice:2125,tariffsTax:170.58,service:400,otherCosts:0,totalCost:2695.58,salePrice:4000,platform:'eBay',platformFee:330,shipping:100,net:3570,profit:874.42,margin:21.86,status:'Sold',saleDate:'2026-02-28'},
-            {id:4,sku:'004',brand:'IWC',model:'Dress White Gold Hands',description:'',reference:'',year:'1955',size:35,dial:'Cream',caseMat:'Stainless Steel',strap:'Leather',purchaseDate:'2026-01-14',purchasePrice:875,tariffsTax:70.24,service:500,otherCosts:0,totalCost:1445.24,salePrice:1700,platform:'Shopify',platformFee:49.60,shipping:100,net:1550.40,profit:105.16,margin:6.19,status:'Sold',saleDate:'2026-03-01'},
-            {id:5,sku:'005',brand:'Tudor',model:'Prince Date+Day Jumbo Gold Plated NOS',description:'',reference:'7019/1',year:'1969',size:38,dial:'Gold',caseMat:'Gold plated',strap:'Gold plated',purchaseDate:'2026-01-20',purchasePrice:6460,tariffsTax:0,service:0,otherCosts:0,totalCost:6460,salePrice:8000,platform:'eBay',platformFee:570,shipping:100,net:7330,profit:870,margin:10.88,status:'Sold',saleDate:'2026-03-15'},
-            {id:6,sku:'006',brand:'Longines',model:'14K Tank Sweeping Lugs',description:'',reference:'',year:'1940s',size:null,dial:'White',caseMat:'14k Gold',strap:'',purchaseDate:'2026-01-24',purchasePrice:939.22,tariffsTax:80.78,service:0,otherCosts:0,totalCost:1020,salePrice:1350,platform:'eBay',platformFee:171,shipping:100,net:1079,profit:59,margin:4.37,status:'Sold',saleDate:'2026-03-20'},
-            {id:7,sku:'007',brand:'Rolex',model:'Air King Rare Pre-Precision Dial',description:'',reference:'5500',year:'1981',size:34,dial:'Cream',caseMat:'Stainless Steel',strap:'Stainless Steel Jubilee',purchaseDate:'2026-03-30',purchasePrice:2048.73,tariffsTax:0,service:0,otherCosts:0,totalCost:2048.73,salePrice:3500,platform:'eBay',platformFee:300,shipping:100,net:3100,profit:1051.27,margin:30.04,status:'In Stock',saleDate:''},
-            {id:8,sku:'008',brand:'Rolex',model:'Datejust Two Tone Champagne Dial',description:'',reference:'16013',year:'1980',size:36,dial:'Champagne',caseMat:'Two Tone',strap:'Two Tone Jubilee',purchaseDate:'2026-03-30',purchasePrice:3888.73,tariffsTax:0,service:0,otherCosts:0,totalCost:3888.73,salePrice:5500,platform:'eBay',platformFee:420,shipping:100,net:4980,profit:1091.27,margin:19.84,status:'In Stock',saleDate:''}
+            {id:1,sku:'001',brand:'Omega',model:'Seamaster 30 Linen Dial',description:'',reference:'125.003-62',year:'1962-63',size:35,dial:'Silver',caseMat:'Stainless Steel',strap:'Leather',purchaseDate:'2026-01-14',purchasePrice:687.50,tariffsTax:55.19,service:377,otherCosts:0,totalCost:1119.69,salePrice:1800,platform:'Chrono24',platformFee:117,shipping:100,net:1583,profit:463.31,margin:25.74,status:'Sold',saleDate:'2026-01-20',image:''},
+            {id:2,sku:'002',brand:'Vacheron Constantin',model:'4322 18k Shell Lugs',description:'',reference:'4322',year:'1945',size:35.5,dial:'White',caseMat:'14k Gold',strap:'Leather',purchaseDate:'2026-01-08',purchasePrice:4106.40,tariffsTax:501,service:450,otherCosts:0,totalCost:5057.40,salePrice:6750,platform:'eBay',platformFee:495,shipping:100,net:6155,profit:1097.60,margin:16.26,status:'Sold',saleDate:'2026-02-15',image:''},
+            {id:3,sku:'003',brand:'Tudor',model:'Prince Date+Day Jumbo Blue Dial Italian Day',description:'',reference:'7019/4',year:'1969-70',size:38,dial:'Blue',caseMat:'Stainless Steel',strap:'Stainless Steel',purchaseDate:'2026-01-14',purchasePrice:2125,tariffsTax:170.58,service:400,otherCosts:0,totalCost:2695.58,salePrice:4000,platform:'eBay',platformFee:330,shipping:100,net:3570,profit:874.42,margin:21.86,status:'Sold',saleDate:'2026-02-28',image:''},
+            {id:4,sku:'004',brand:'IWC',model:'Dress White Gold Hands',description:'',reference:'',year:'1955',size:35,dial:'Cream',caseMat:'Stainless Steel',strap:'Leather',purchaseDate:'2026-01-14',purchasePrice:875,tariffsTax:70.24,service:500,otherCosts:0,totalCost:1445.24,salePrice:1700,platform:'Shopify',platformFee:49.60,shipping:100,net:1550.40,profit:105.16,margin:6.19,status:'Sold',saleDate:'2026-03-01',image:''},
+            {id:5,sku:'005',brand:'Tudor',model:'Prince Date+Day Jumbo Gold Plated NOS',description:'',reference:'7019/1',year:'1969',size:38,dial:'Gold',caseMat:'Gold plated',strap:'Gold plated',purchaseDate:'2026-01-20',purchasePrice:6460,tariffsTax:0,service:0,otherCosts:0,totalCost:6460,salePrice:8000,platform:'eBay',platformFee:570,shipping:100,net:7330,profit:870,margin:10.88,status:'Sold',saleDate:'2026-03-15',image:''},
+            {id:6,sku:'006',brand:'Longines',model:'14K Tank Sweeping Lugs',description:'',reference:'',year:'1940s',size:null,dial:'White',caseMat:'14k Gold',strap:'',purchaseDate:'2026-01-24',purchasePrice:939.22,tariffsTax:80.78,service:0,otherCosts:0,totalCost:1020,salePrice:1350,platform:'eBay',platformFee:171,shipping:100,net:1079,profit:59,margin:4.37,status:'Sold',saleDate:'2026-03-20',image:''},
+            {id:7,sku:'007',brand:'Rolex',model:'Air King Rare Pre-Precision Dial',description:'',reference:'5500',year:'1981',size:34,dial:'Cream',caseMat:'Stainless Steel',strap:'Stainless Steel Jubilee',purchaseDate:'2026-03-30',purchasePrice:2048.73,tariffsTax:0,service:0,otherCosts:0,totalCost:2048.73,salePrice:3500,platform:'eBay',platformFee:300,shipping:100,net:3100,profit:1051.27,margin:30.04,status:'In Stock',saleDate:'',image:''},
+            {id:8,sku:'008',brand:'Rolex',model:'Datejust Two Tone Champagne Dial',description:'',reference:'16013',year:'1980',size:36,dial:'Champagne',caseMat:'Two Tone',strap:'Two Tone Jubilee',purchaseDate:'2026-03-30',purchasePrice:3888.73,tariffsTax:0,service:0,otherCosts:0,totalCost:3888.73,salePrice:5500,platform:'eBay',platformFee:420,shipping:100,net:4980,profit:1091.27,margin:19.84,status:'In Stock',saleDate:'',image:''}
         ];
 
         let charts = {};
         const VIEWS_STORAGE_KEY = 'gtv-saved-views';
+        const MAX_IMAGE_SIZE_MB = 5;
 
         function formatCurrency(value) {
             if (value === null || value === undefined || value === '') return '-';
@@ -557,13 +676,75 @@
             select.value = currentValue;
         }
 
+        // Image handling functions
+        function handleImageUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            // Check file size (max 5MB)
+            if (file.size > MAX_IMAGE_SIZE_MB * 1024 * 1024) {
+                alert(`Image too large. Maximum size is ${MAX_IMAGE_SIZE_MB}MB.`);
+                event.target.value = '';
+                return;
+            }
+
+            // Check file type
+            const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg'];
+            if (!validTypes.includes(file.type)) {
+                alert('Invalid file type. Please use JPG, PNG, or WebP.');
+                event.target.value = '';
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const imageData = e.target.result;
+                document.getElementById('editImageData').value = imageData;
+                showImagePreview(imageData);
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function showImagePreview(imageData) {
+            const uploadSection = document.getElementById('imageUploadSection');
+            const uploadLabel = document.getElementById('imageUploadLabel');
+            const previewContainer = document.getElementById('imagePreviewContainer');
+            const previewImg = document.getElementById('imagePreview');
+
+            if (imageData) {
+                previewImg.src = imageData;
+                uploadLabel.classList.add('hidden');
+                previewContainer.classList.remove('hidden');
+                uploadSection.classList.add('has-image');
+            } else {
+                previewImg.src = '';
+                uploadLabel.classList.remove('hidden');
+                previewContainer.classList.add('hidden');
+                uploadSection.classList.remove('has-image');
+            }
+        }
+
+        function removeImage() {
+            document.getElementById('editImageData').value = '';
+            document.getElementById('imageUploadInput').value = '';
+            showImagePreview('');
+        }
+
+        function getThumbnailHtml(watch) {
+            if (watch.image) {
+                return `<img src="${watch.image}" class="watch-thumbnail" alt="${watch.brand} ${watch.model}">`;
+            } else {
+                return `<div class="watch-thumbnail-placeholder" title="No photo">⌚</div>`;
+            }
+        }
+
         function renderTable() {
             const search = document.getElementById('searchInput').value.toLowerCase();
             const statusFilter = document.getElementById('statusFilter').value;
             const brandFilter = document.getElementById('brandFilter').value;
 
             let filtered = watches.filter(w => {
-                const matchesSearch = !search || (w.sku                || '').toLowerCase().includes(search) ||
+                const matchesSearch = !search || (w.sku || '').toLowerCase().includes(search) ||
                     (w.brand || '').toLowerCase().includes(search) ||
                     (w.model || '').toLowerCase().includes(search) ||
                     (w.reference || '').toLowerCase().includes(search);
@@ -579,6 +760,7 @@
                 const statusClass = 'badge-' + (watch.status || 'in-stock').toLowerCase().replace(' ', '-');
                 
                 return `<tr onclick="openEditModal(${watch.id})">
+                    <td class="text-center">${getThumbnailHtml(watch)}</td>
                     <td class="nowrap">${watch.sku || '-'}</td>
                     <td class="nowrap">${watch.brand || '-'}</td>
                     <td>${watch.model || '-'}</td>
@@ -634,12 +816,18 @@
             document.getElementById('editPlatform').value = watch.platform || '';
             document.getElementById('editShipping').value = watch.shipping || '';
             document.getElementById('editPlatformFee').value = watch.platformFee || '';
+            
+            // Handle image
+            document.getElementById('editImageData').value = watch.image || '';
+            showImagePreview(watch.image || '');
 
             document.getElementById('editModal').classList.add('active');
         }
 
         function closeModal() {
             document.getElementById('editModal').classList.remove('active');
+            // Reset image upload
+            document.getElementById('imageUploadInput').value = '';
         }
 
         function saveWatchEdit() {
@@ -668,6 +856,7 @@
             watch.platform = document.getElementById('editPlatform').value;
             watch.shipping = parseFloat(document.getElementById('editShipping').value) || 0;
             watch.platformFee = parseFloat(document.getElementById('editPlatformFee').value) || 0;
+            watch.image = document.getElementById('editImageData').value || '';
 
             calculateWatch(watch);
             updateAll();
@@ -894,7 +1083,8 @@
                 profit: 0,
                 margin: 0,
                 status: 'In Stock',
-                saleDate: ''
+                saleDate: '',
+                image: ''
             };
             watches.push(newWatch);
             updateAll();
