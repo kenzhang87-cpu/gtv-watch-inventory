@@ -813,7 +813,6 @@
         ];
 
         let charts = {};
-        const VIEWS_STORAGE_KEY = 'gtv-saved-views';
         const MAX_IMAGE_SIZE_MB = 5;
 
         function formatCurrency(value) {
@@ -1128,91 +1127,139 @@
             closeModal();
         }
 
-        function openSaveViewModal() {
-            document.getElementById('viewNameInput').value = '';
-            document.getElementById('saveViewModal').classList.add('active');
-            document.getElementById('viewNameInput').focus();
+        // Server-side views API functions (replaces localStorage)
+const API_URL = "api";
+
+async function apiRequest(method, data = null) {
+    const options = {
+        method: method,
+        headers: {
+            "Content-Type": "application/json",
+            "X-Password": CORRECT_PASSWORD
         }
+    };
+    if (data) {
+        options.body = JSON.stringify(data);
+    }
+    const response = await fetch(API_URL, options);
+    if (!response.ok) {
+        const error = await response.json().catch(() => ({ error: "Unknown error" }));
+        throw new Error(error.error || `HTTP ${response.status}`);
+    }
+    return response.json();
+}
 
-        function closeSaveViewModal() {
-            document.getElementById('saveViewModal').classList.remove('active');
-        }
+function openSaveViewModal() {
+    document.getElementById('viewNameInput').value = '';
+    document.getElementById('saveViewModal').classList.add('active');
+    document.getElementById('viewNameInput').focus();
+}
 
-        function saveCurrentView() {
-            const name = document.getElementById('viewNameInput').value.trim();
-            if (!name) {
-                alert('Please enter a name for this view');
-                return;
-            }
+function closeSaveViewModal() {
+    document.getElementById('saveViewModal').classList.remove('active');
+}
 
-            const savedViews = JSON.parse(localStorage.getItem(VIEWS_STORAGE_KEY) || '[]');
-            const view = {
-                id: Date.now(),
-                name: name,
-                timestamp: new Date().toISOString(),
-                watches: JSON.parse(JSON.stringify(watches))
-            };
+async function saveCurrentView() {
+    const name = document.getElementById('viewNameInput').value.trim();
+    if (!name) {
+        alert('Please enter a name for this view');
+        return;
+    }
 
-            savedViews.push(view);
-            localStorage.setItem(VIEWS_STORAGE_KEY, JSON.stringify(savedViews));
+    try {
+        const view = {
+            id: Date.now(),
+            name: name,
+            timestamp: new Date().toISOString(),
+            watches: JSON.parse(JSON.stringify(watches))
+        };
+
+        const result = await apiRequest('POST', { action: 'save', view: view });
+        if (result.success) {
             closeSaveViewModal();
             alert('View saved successfully!');
+        } else {
+            alert('Failed to save view: ' + (result.error || 'Unknown error'));
         }
+    } catch (err) {
+        alert('Error saving view: ' + err.message);
+    }
+}
 
-        function openLoadViewModal() {
-            const savedViews = JSON.parse(localStorage.getItem(VIEWS_STORAGE_KEY) || '[]');
-            const container = document.getElementById('viewsList');
+async function openLoadViewModal() {
+    const container = document.getElementById('viewsList');
+    container.innerHTML = '<div class="empty-state">Loading views...</div>';
+    document.getElementById('loadViewModal').classList.add('active');
 
-            if (savedViews.length === 0) {
-                container.innerHTML = '<div class="empty-state">No saved views found</div>';
-            } else {
-                container.innerHTML = savedViews.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)).map(view => {
+    try {
+        const result = await apiRequest('GET');
+        if (result.success && result.views && result.views.length > 0) {
+            container.innerHTML = result.views
+                .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+                .map(view => {
                     const date = new Date(view.timestamp).toLocaleString();
-                    const watchCount = view.watches ? view.watches.length : 0;
+                    const watchCount = view.watchCount || 0;
                     return '<div class="view-item">' +
                         '<div class="view-item-info" onclick="loadView(' + view.id + ')">' +
                             '<h4>' + escapeHtml(view.name) + '</h4>' +
-                            '<span>' + date + ' • ' + watchCount + ' watches</span>' +
+                            '<span>' + date + ' &bull; ' + watchCount + ' watches</span>' +
                         '</div>' +
                         '<div class="view-item-actions">' +
                             '<button class="btn btn-sm btn-danger" onclick="event.stopPropagation(); deleteViewItem(' + view.id + ')">Delete</button>' +
                         '</div>' +
                     '</div>';
                 }).join('');
-            }
-
-            document.getElementById('loadViewModal').classList.add('active');
+        } else {
+            container.innerHTML = '<div class="empty-state">No saved views found</div>';
         }
+    } catch (err) {
+        container.innerHTML = '<div class="empty-state">Error loading views: ' + escapeHtml(err.message) + '</div>';
+    }
+}
 
-        function closeLoadViewModal() {
-            document.getElementById('loadViewModal').classList.remove('active');
-        }
+function closeLoadViewModal() {
+    document.getElementById('loadViewModal').classList.remove('active');
+}
 
-        function loadView(viewId) {
-            const savedViews = JSON.parse(localStorage.getItem(VIEWS_STORAGE_KEY) || '[]');
-            const view = savedViews.find(v => v.id === viewId);
-            if (!view || !view.watches) return;
-
+async function loadView(viewId) {
+    try {
+        const result = await apiRequest('POST', { action: 'load', id: viewId });
+        if (result.success && result.view) {
+            const view = result.view;
             if (confirm('Load view "' + view.name + '"? This will replace your current data.')) {
                 watches = JSON.parse(JSON.stringify(view.watches));
                 watches.forEach(w => calculateWatch(w));
                 updateAll();
                 closeLoadViewModal();
             }
+        } else {
+            alert('Failed to load view: ' + (result.error || 'Unknown error'));
         }
+    } catch (err) {
+        alert('Error loading view: ' + err.message);
+    }
+}
 
-        function deleteViewItem(viewId) {
-            const savedViews = JSON.parse(localStorage.getItem(VIEWS_STORAGE_KEY) || '[]');
-            const updatedViews = savedViews.filter(v => v.id !== viewId);
-            localStorage.setItem(VIEWS_STORAGE_KEY, JSON.stringify(updatedViews));
-            openLoadViewModal();
+async function deleteViewItem(viewId) {
+    if (!confirm('Delete this saved view?')) return;
+    
+    try {
+        const result = await apiRequest('DELETE', { id: viewId });
+        if (result.success) {
+            openLoadViewModal(); // Refresh the list
+        } else {
+            alert('Failed to delete view: ' + (result.error || 'Unknown error'));
         }
+    } catch (err) {
+        alert('Error deleting view: ' + err.message);
+    }
+}
 
-        function escapeHtml(text) {
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
 
         function updateCharts() {
             const soldWatches = watches.filter(w => w.status === 'Sold' && w.saleDate);
