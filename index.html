@@ -209,9 +209,45 @@
         function deleteWatch() { if (currentEditId && confirm('Delete this watch?')) { watches = watches.filter(w => w.id !== currentEditId); closeModal(); updateAll(); } }
         function exportData() { const b = new Blob([JSON.stringify(watches, null, 2)], { type: 'application/json' }); const u = URL.createObjectURL(b); const a = document.createElement('a'); a.href = u; a.download = 'gtv_inventory_' + new Date().toISOString().split('T')[0] + '.json'; a.click(); URL.revokeObjectURL(u); }
         function importData(input) { if (input.files && input.files[0]) { const r = new FileReader(); r.onload = function(e) { try { watches = JSON.parse(e.target.result); updateAll(); alert('Imported!'); } catch (err) { alert('Error: ' + err.message); } }; r.readAsText(input.files[0]); } }
-        function saveView() { const name = prompt('View name:'); if (!name) return; const views = JSON.parse(localStorage.getItem('gtv_views') || '[]'); views.push({ id: Date.now(), name: name, timestamp: new Date().toISOString(), watches: watches }); localStorage.setItem('gtv_views', JSON.stringify(views)); alert('Saved!'); }
-        function loadView() { const views = JSON.parse(localStorage.getItem('gtv_views') || '[]'); const c = document.getElementById('savedViewsList'); if (views.length === 0) { c.innerHTML = '<p style="text-align:center;color:#666;padding:20px;">No saved views.</p>'; } else { c.innerHTML = views.map(v => '<div style="padding:16px;border-bottom:1px solid #eee;display:flex;justify-content:space-between;align-items:center;"><div><div style="font-weight:600;">' + v.name + '</div><div style="font-size:12px;color:#666;">' + new Date(v.timestamp).toLocaleString() + ' - ' + v.watches.length + ' watches</div></div><button class="btn btn-primary btn-small" onclick="loadViewData(' + v.id + ')">Load</button></div>').join(''); } document.getElementById('loadViewModal').classList.add('active'); }
-        function loadViewData(id) { const views = JSON.parse(localStorage.getItem('gtv_views') || '[]'); const v = views.find(x => x.id === id); if (v) { watches = v.watches; updateAll(); closeLoadViewModal(); } }
+        const API_URL = '/gtv/api';
+        async function saveView() {
+            const name = prompt('View name:');
+            if (!name) return;
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-Password': CORRECT_PASSWORD },
+                    body: JSON.stringify({ action: 'save', view: { name: name, timestamp: new Date().toISOString(), watches: watches } })
+                });
+                const data = await response.json();
+                if (data.success) { alert('View saved to server!'); } else { alert('Error: ' + (data.error || 'Failed to save')); }
+            } catch (err) { alert('Error saving view: ' + err.message); }
+        }
+        async function loadView() {
+            try {
+                const response = await fetch(API_URL, { method: 'GET', headers: { 'X-Password': CORRECT_PASSWORD } });
+                const data = await response.json();
+                const c = document.getElementById('savedViewsList');
+                if (!data.success || !data.views || data.views.length === 0) {
+                    c.innerHTML = '<p style="text-align:center;color:#666;padding:20px;">No saved views on server.</p>';
+                } else {
+                    c.innerHTML = data.views.map(v => '<div style="padding:16px;border-bottom:1px solid #eee;display:flex;justify-content:space-between;align-items:center;"><div><div style="font-weight:600;">' + v.name + '</div><div style="font-size:12px;color:#666;">' + new Date(v.timestamp).toLocaleString() + ' - ' + v.watchCount + ' watches</div></div><button class="btn btn-primary btn-small" onclick="loadViewData(' + v.id + ')">Load</button></div>').join('');
+                }
+                document.getElementById('loadViewModal').classList.add('active');
+            } catch (err) { alert('Error loading views: ' + err.message); }
+        }
+        async function loadViewData(id) {
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-Password': CORRECT_PASSWORD },
+                    body: JSON.stringify({ action: 'load', id: id })
+                });
+                const data = await response.json();
+                if (data.success && data.view) { watches = data.view.watches; updateAll(); closeLoadViewModal(); }
+                else { alert('Error: ' + (data.error || 'View not found')); }
+            } catch (err) { alert('Error loading view: ' + err.message); }
+        }
         function closeLoadViewModal() { document.getElementById('loadViewModal').classList.remove('active'); }
         if (sessionStorage.getItem('gtv_auth') === 'true') updateAll();
     </script>
