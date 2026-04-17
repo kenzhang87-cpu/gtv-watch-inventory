@@ -770,7 +770,7 @@
         const CORRECT_PASSWORD = 'Lenny365';
         const AUTH_KEY = 'gtv_auth';
 
-        function checkAuth() { showMainContent(); return;
+        function checkAuth() {
             if (sessionStorage.getItem(AUTH_KEY) === 'true') {
                 showMainContent();
             }
