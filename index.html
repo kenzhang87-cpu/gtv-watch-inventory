@@ -1,87 +1,217 @@
-ById('editSalePrice').value) || 0; const pf = parseFloat(document.getElementById('editPlatformFee').value) || 0; const ship = parseFloat(document.getElementById('editShipping').value) || 0; const net = sp - pf - ship; document.getElementById('editNet').value = net.toFixed(2); const profit = net - tc; document.getElementById('editProfit').value = profit.toFixed(2); const margin = sp > 0 ? (profit / sp) * 100 : 0; document.getElementById('editMargin').value = margin.toFixed(2); }
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GTV - Watch Inventory & P&L Tracker</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; }
+        .login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(135deg, #1a237e 0%, #3949ab 100%); display: flex; align-items: center; justify-content: center; z-index: 10000; }
+        .login-box { background: white; padding: 40px; border-radius: 16px; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.3); width: 90%; max-width: 400px; }
+        .login-box h1 { font-size: 48px; margin-bottom: 8px; }
+        .login-box h2 { color: #1a237e; margin-bottom: 8px; }
+        .login-box p { color: #666; margin-bottom: 24px; }
+        .login-input { width: 100%; padding: 14px 16px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 16px; margin-bottom: 16px; }
+        .login-input.error { border-color: #f44336; }
+        .login-btn { width: 100%; padding: 14px; background: #3949ab; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; }
+        .login-btn:hover { background: #1a237e; }
+        .error-msg { color: #f44336; font-size: 14px; margin-top: 8px; }
+        #mainContent { display: none; padding: 20px; max-width: 1400px; margin: 0 auto; }
+        #mainContent.active { display: block; }
+        .header { background: white; padding: 20px 24px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; }
+        .header h1 { color: #1a237e; font-size: 24px; }
+        .header-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+        .btn { padding: 10px 18px; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; border: none; display: inline-flex; align-items: center; gap: 6px; }
+        .btn-primary { background: #3949ab; color: white; }
+        .btn-secondary { background: #f5f5f5; color: #333; border: 1px solid #ddd; }
+        .btn-success { background: #4caf50; color: white; }
+        .btn-danger { background: #f44336; color: white; }
+        .btn-small { padding: 6px 12px; font-size: 12px; }
+        .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+        .kpi-card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+        .kpi-card h3 { font-size: 12px; color: #666; text-transform: uppercase; margin-bottom: 8px; }
+        .kpi-card .value { font-size: 28px; font-weight: 700; color: #1a237e; }
+        .kpi-card .value.success { color: #4caf50; }
+        .kpi-card .value.danger { color: #f44336; }
+        @media (max-width: 1024px) { .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
+        @media (max-width: 640px) { .kpi-grid { grid-template-columns: 1fr; } .header { flex-direction: column; align-items: flex-start; } }
+        .table-container { background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); overflow: hidden; margin-bottom: 24px; }
+        .table-header { padding: 16px 20px; background: #1a237e; color: white; display: flex; justify-content: space-between; align-items: center; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        th { background: #f8f9fa; padding: 12px 16px; text-align: left; font-weight: 600; color: #555; border-bottom: 2px solid #e0e0e0; }
+        td { padding: 12px 16px; border-bottom: 1px solid #f0f0f0; }
+        tr:hover { background: #f8f9fa; }
+        .thumbnail { width: 50px; height: 50px; border-radius: 8px; object-fit: cover; background: #f0f0f0; cursor: pointer; transition: transform 0.2s; }
+        .thumbnail:hover { transform: scale(1.1); }
+        .status-badge { padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; text-transform: uppercase; }
+        .status-instock { background: #e8f5e9; color: #2e7d32; }
+        .status-sold { background: #e3f2fd; color: #1565c0; }
+        .status-pending { background: #fff3e0; color: #e65100; }
+        .actions { display: flex; gap: 8px; }
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); display: none; align-items: center; justify-content: center; z-index: 1000; padding: 20px; }
+        .modal-overlay.active { display: flex; }
+        .modal { background: white; border-radius: 16px; width: 100%; max-width: 900px; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+        .modal-header { padding: 20px 24px; border-bottom: 1px solid #e0e0e0; display: flex; justify-content: space-between; align-items: center; }
+        .modal-header h2 { font-size: 20px; color: #1a237e; }
+        .close-btn { background: none; border: none; font-size: 24px; cursor: pointer; color: #666; }
+        .modal-body { padding: 24px; }
+        .form-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+        .form-group { display: flex; flex-direction: column; }
+        .form-group.full { grid-column: 1 / -1; }
+        .form-group label { font-size: 12px; font-weight: 600; color: #555; margin-bottom: 6px; text-transform: uppercase; }
+        .form-group input, .form-group select { padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; }
+        .section-title { font-size: 14px; font-weight: 700; color: #1a237e; margin: 20px 0 12px; padding-bottom: 8px; border-bottom: 2px solid #e8eaf6; grid-column: 1 / -1; }
+        .modal-footer { padding: 16px 24px; border-top: 1px solid #e0e0e0; display: flex; justify-content: flex-end; gap: 12px; }
+        @media (max-width: 768px) { .form-grid { grid-template-columns: 1fr; } }
+        .image-preview { width: 100%; max-height: 300px; object-fit: contain; background: #f5f5f5; border-radius: 8px; margin-top: 8px; border: 1px solid #ddd; cursor: zoom-in; }
+        .image-preview:hover { transform: scale(1.02); transition: transform 0.2s; }
+        .charts-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
+        .chart-card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+        @media (max-width: 1024px) { .charts-grid { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+    <div id="loginScreen" class="login-overlay">
+        <div class="login-box">
+            <h1>⌚</h1>
+            <h2>GTV Watch Inventory</h2>
+            <p>Enter password to access</p>
+            <input type="password" id="loginPassword" class="login-input" placeholder="Password" onkeypress="if(event.key==='Enter')doLogin()">
+            <button class="login-btn" onclick="doLogin()">Unlock</button>
+            <div id="loginError" class="error-msg"></div>
+        </div>
+    </div>
+
+    <div id="mainContent">
+        <div class="header">
+            <h1>⌚ GTV Watch Inventory & P&L Tracker</h1>
+            <div class="header-actions">
+                <button class="btn btn-secondary" onclick="exportData()">📥 Export</button>
+                <button class="btn btn-secondary" onclick="document.getElementById('importFile').click()">📤 Import</button>
+                <input type="file" id="importFile" style="display:none" accept=".json" onchange="importData(this)">
+                <button class="btn btn-secondary" onclick="saveView()">💾 Save View</button>
+                <button class="btn btn-secondary" onclick="loadView()">📂 Load View</button>
+                <button class="btn btn-danger" onclick="doLogout()">Logout</button>
+            </div>
+        </div>
+
+        <div class="kpi-grid">
+            <div class="kpi-card"><h3>Total Revenue</h3><div class="value" id="kpiRevenue">$0</div></div>
+            <div class="kpi-card"><h3>Total Costs</h3><div class="value" id="kpiCosts">$0</div></div>
+            <div class="kpi-card"><h3>Total Profit</h3><div class="value" id="kpiProfit">$0</div></div>
+            <div class="kpi-card"><h3>Inventory Value</h3><div class="value" id="kpiInventory">$0</div></div>
+        </div>
+
+        <div class="table-container">
+            <div class="table-header">
+                <h2>Watch Inventory</h2>
+                <button class="btn btn-success" onclick="openModal()">+ Add Watch</button>
+            </div>
+            <div style="overflow-x:auto;">
+                <table>
+                    <thead><tr><th>Image</th><th>SKU</th><th>Brand</th><th>Model</th><th>Year</th><th>Status</th><th>Purchase</th><th>Sale</th><th>Profit</th><th>Margin</th><th>Actions</th></tr></thead>
+                    <tbody id="inventoryTable"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="charts-grid">
+            <div class="chart-card"><h3>Inventory by Brand</h3><canvas id="brandChart"></canvas></div>
+            <div class="chart-card"><h3>Profit/Loss by Watch</h3><canvas id="profitChart"></canvas></div>
+        </div>
+    </div>
+
+    <div id="editModal" class="modal-overlay" onclick="if(event.target===this)closeModal()">
+        <div class="modal">
+            <div class="modal-header"><h2 id="modalTitle">Edit Watch</h2><button class="close-btn" onclick="closeModal()">&times;</button></div>
+            <div class="modal-body">
+                <div class="form-grid">
+                    <div class="section-title">Basic Information</div>
+                    <div class="form-group"><label>SKU</label><input type="text" id="editSku"></div>
+                    <div class="form-group"><label>Brand</label><input type="text" id="editBrand"></div>
+                    <div class="form-group"><label>Model</label><input type="text" id="editModel"></div>
+                    <div class="form-group"><label>Reference</label><input type="text" id="editReference"></div>
+                    <div class="form-group"><label>Year</label><input type="text" id="editYear"></div>
+                    <div class="form-group"><label>Size (mm)</label><input type="number" id="editSize"></div>
+                    <div class="form-group"><label>Dial Color</label><input type="text" id="editDial"></div>
+                    <div class="form-group"><label>Case Material</label><input type="text" id="editCase"></div>
+                    <div class="form-group"><label>Strap</label><input type="text" id="editStrap"></div>
+                    <div class="form-group"><label>Status</label><select id="editStatus"><option value="In Stock">In Stock</option><option value="Sold">Sold</option><option value="Pending">Pending</option></select></div>
+                    <div class="section-title">Purchase Information</div>
+                    <div class="form-group"><label>Purchase Date</label><input type="date" id="editPurchaseDate"></div>
+                    <div class="form-group"><label>Purchase Price</label><input type="number" id="editPurchasePrice" step="0.01" onchange="calcTotals()"></div>
+                    <div class="form-group"><label>Tariffs/Tax</label><input type="number" id="editTariffs" step="0.01" onchange="calcTotals()"></div>
+                    <div class="form-group"><label>Service Cost</label><input type="number" id="editService" step="0.01" onchange="calcTotals()"></div>
+                    <div class="form-group"><label>Other Costs</label><input type="number" id="editOtherCosts" step="0.01" onchange="calcTotals()"></div>
+                    <div class="form-group"><label>Total Cost</label><input type="number" id="editTotalCost" step="0.01" readonly style="background:#f5f5f5;"></div>
+                    <div class="section-title">Sale Information</div>
+                    <div class="form-group"><label>Sale Date</label><input type="date" id="editSaleDate"></div>
+                    <div class="form-group"><label>Sale Price</label><input type="number" id="editSalePrice" step="0.01" onchange="calcTotals()"></div>
+                    <div class="form-group"><label>Platform</label><input type="text" id="editPlatform"></div>
+                    <div class="form-group"><label>Platform Fee</label><input type="number" id="editPlatformFee" step="0.01" onchange="calcTotals()"></div>
+                    <div class="form-group"><label>Shipping</label><input type="number" id="editShipping" step="0.01" onchange="calcTotals()"></div>
+                    <div class="form-group"><label>Net Sale</label><input type="number" id="editNet" step="0.01" readonly style="background:#f5f5f5;"></div>
+                    <div class="form-group"><label>Profit</label><input type="number" id="editProfit" step="0.01" readonly style="background:#f5f5f5;"></div>
+                    <div class="form-group"><label>Margin %</label><input type="number" id="editMargin" step="0.01" readonly style="background:#f5f5f5;"></div>
+                    <div class="section-title">Watch Image</div>
+                    <div class="form-group full">
+                        <label>Image URL</label>
+                        <input type="text" id="editImageUrl" placeholder="https://..." onchange="updatePreview()">
+                    </div>
+                    <div class="form-group full">
+                        <label>Or Upload Image</label>
+                        <input type="file" id="editImageFile" accept="image/*" onchange="handleUpload(this)">
+                    </div>
+                    <div class="form-group full">
+                        <img id="imagePreview" class="image-preview" style="display:none;" onclick="window.open(this.src, '_blank')">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                <button class="btn btn-danger" onclick="deleteWatch()" id="deleteBtn" style="display:none;">Delete</button>
+                <button class="btn btn-primary" onclick="saveWatch()">Save Watch</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="loadViewModal" class="modal-overlay" onclick="if(event.target===this)closeLoadViewModal()">
+        <div class="modal" style="max-width:500px;">
+            <div class="modal-header"><h2>Load Saved View</h2><button class="close-btn" onclick="closeLoadViewModal()">&times;</button></div>
+            <div class="modal-body" id="savedViewsList"></div>
+        </div>
+    </div>
+
+    <script>
+        const CORRECT_PASSWORD = 'Lenny365';
+        let currentEditId = null;
+        let charts = {};
+        let watches = [{"id":1,"sku":"001","brand":"Omega","model":"Seamaster 30 Linen Dial","reference":"125.003-62","year":"1962-63","size":35,"dial":"Silver","caseMat":"Stainless Steel","strap":"Leather","purchaseDate":"2026-01-14","purchasePrice":687.5,"tariffsTax":55.19,"service":377,"otherCosts":0,"totalCost":1119.69,"salePrice":1800,"platform":"Chrono24","platformFee":117,"shipping":100,"net":1583,"profit":463.31,"margin":25.74,"status":"In Stock","saleDate":"2026-01-20","image":"","imageUrl":"https://goodtimevintage.net/cdn/shop/files/FullSizeRender_8d4c27c9-9edb-4260-811f-930396c928dd.jpg?v=1773850734&width=832"},{"id":2,"sku":"002","brand":"Vacheron Constantin","model":"4322 18k Shell Lugs","reference":"4322","year":"1945","size":35.5,"dial":"White","caseMat":"14k Gold","strap":"Leather","purchaseDate":"2026-01-08","purchasePrice":4106.4,"tariffsTax":501,"service":450,"otherCosts":0,"totalCost":5057.4,"salePrice":6750,"platform":"eBay","platformFee":495,"shipping":100,"net":6155,"profit":1097.6,"margin":16.26,"status":"In Stock","saleDate":"2026-02-15","image":"","imageUrl":"https://goodtimevintage.net/cdn/shop/files/FullSizeRender_060d2f04-51a7-4f41-90bb-eed110611123.heic?v=1772940135&width=832"},{"id":3,"sku":"003","brand":"Tudor","model":"Prince Date+Day Jumbo Blue Dial Italian Day","reference":"7019/4","year":"1969-70","size":38,"dial":"Blue","caseMat":"Stainless Steel","strap":"Stainless Steel","purchaseDate":"2026-01-14","purchasePrice":2125,"tariffsTax":170.58,"service":400,"otherCosts":0,"totalCost":2695.58,"salePrice":4000,"platform":"eBay","platformFee":330,"shipping":100,"net":3570,"profit":874.42,"margin":21.86,"status":"Pending","saleDate":"2026-02-28","image":"","imageUrl":"https://goodtimevintage.net/cdn/shop/files/27678AF7-1EFD-4402-B0AF-A2602EF21F2A.jpg?v=1768524857&width=832"},{"id":4,"sku":"004","brand":"IWC","model":"Dress White Gold Hands","reference":"","year":"1955","size":35,"dial":"White","caseMat":"Stainless Steel","strap":"Leather","purchaseDate":"2026-01-14","purchasePrice":875,"tariffsTax":70.24,"service":500,"otherCosts":0,"totalCost":1445.24,"salePrice":1700,"platform":"Shopify","platformFee":49.6,"shipping":100,"net":1550.4,"profit":105.16,"margin":6.19,"status":"In Stock","saleDate":"2026-03-01","image":"","imageUrl":"https://goodtimevintage.net/cdn/shop/files/FE5DB6B7-2BEC-4B43-9826-1C3953D74030.jpg?v=1768581423&width=832"},{"id":5,"sku":"005","brand":"Tudor","model":"Prince Date+Day Jumbo Gold Plated NOS","reference":"7019/1","year":"1969","size":38,"dial":"Gold","caseMat":"Gold plated","strap":"Gold plated","purchaseDate":"2026-01-20","purchasePrice":6460,"tariffsTax":0,"service":0,"otherCosts":0,"totalCost":6460,"salePrice":8000,"platform":"eBay","platformFee":570,"shipping":100,"net":7330,"profit":870,"margin":10.88,"status":"In Stock","saleDate":"2026-03-15","image":"","imageUrl":""},{"id":6,"sku":"006","brand":"Longines","model":"14K Tank Sweeping Lugs","reference":"","year":"1940s","size":null,"dial":"White","caseMat":"14k Gold","strap":"","purchaseDate":"2026-01-24","purchasePrice":939.22,"tariffsTax":80.78,"service":0,"otherCosts":0,"totalCost":1020,"salePrice":1350,"platform":"eBay","platformFee":171,"shipping":100,"net":1079,"profit":59,"margin":4.37,"status":"In Stock","saleDate":"2026-03-20","image":"","imageUrl":"https://goodtimevintage.net/cdn/shop/files/FC28F77F-42AE-477E-A420-E343E0C31434.jpg?v=1768953397&width=832"},{"id":7,"sku":"007","brand":"Rolex","model":"Air King Rare Pre-Precision Dial","reference":"5500","year":"1981","size":34,"dial":"Cream","caseMat":"Stainless Steel","strap":"Stainless Steel Jubilee","purchaseDate":"2026-03-30","purchasePrice":2048.73,"tariffsTax":0,"service":0,"otherCosts":0,"totalCost":2048.73,"salePrice":3500,"platform":"eBay","platformFee":300,"shipping":100,"net":3100,"profit":1051.27,"margin":30.04,"status":"In Stock","saleDate":"","image":"","imageUrl":""},{"id":8,"sku":"008","brand":"Rolex","model":"Datejust Two Tone Champagne Dial","reference":"16013","year":"1980","size":36,"dial":"Champagne","caseMat":"Two Tone","strap":"Two Tone Jubilee","purchaseDate":"2026-03-30","purchasePrice":3888.73,"tariffsTax":0,"service":0,"otherCosts":0,"totalCost":3888.73,"salePrice":5500,"platform":"eBay","platformFee":420,"shipping":100,"net":4980,"profit":1091.27,"margin":19.84,"status":"In Stock","saleDate":"","image":"","imageUrl":"https://goodtimevintage.net/cdn/shop/files/FullSizeRender_e788b767-9cf8-414d-a387-1d19cd080f5d.jpg?v=1774284211&width=832"}];
+
+        function doLogin() { const pwd = document.getElementById('loginPassword').value; const err = document.getElementById('loginError'); const input = document.getElementById('loginPassword'); if (pwd === CORRECT_PASSWORD) { sessionStorage.setItem('gtv_auth', 'true'); document.getElementById('loginScreen').style.display = 'none'; document.getElementById('mainContent').classList.add('active'); updateAll(); } else { err.textContent = 'Incorrect password'; input.classList.add('error'); input.value = ''; } }
+        function doLogout() { sessionStorage.removeItem('gtv_auth'); location.reload(); }
+        if (sessionStorage.getItem('gtv_auth') === 'true') { document.getElementById('loginScreen').style.display = 'none'; document.getElementById('mainContent').classList.add('active'); }
+        function formatCurrency(v) { if (!v && v !== 0) return '-'; return '$' + parseFloat(v).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}); }
+        function formatPercent(v) { if (!v && v !== 0) return '-'; return parseFloat(v).toFixed(2) + '%'; }
+        function updateAll() { renderTable(); updateKPIs(); updateCharts(); }
+        function renderTable() { const tbody = document.getElementById('inventoryTable'); tbody.innerHTML = watches.map(w => { const img = w.image || w.imageUrl || 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2250%22 height=%2250%22><rect fill=%22%23f0f0f0%22 width=%2250%22 height=%2250%22/><text fill=%22%23999%22 x=%2225%22 y=%2225%22 text-anchor=%22middle%22>⌚</text></svg>'; const statusClass = w.status === 'In Stock' ? 'status-instock' : w.status === 'Sold' ? 'status-sold' : 'status-pending'; const profitClass = (w.profit || 0) >= 0 ? 'success' : 'danger'; return '<tr><td><img src="' + img + '" class="thumbnail" onclick="openModal(' + w.id + ')"></td><td>' + w.sku + '</td><td>' + w.brand + '</td><td>' + w.model + '</td><td>' + w.year + '</td><td><span class="status-badge ' + statusClass + '">' + w.status + '</span></td><td>' + formatCurrency(w.purchasePrice) + '</td><td>' + formatCurrency(w.salePrice) + '</td><td class="' + profitClass + '">' + formatCurrency(w.profit) + '</td><td>' + formatPercent(w.margin) + '</td><td class="actions"><button class="btn btn-primary btn-small" onclick="openModal(' + w.id + ')">Edit</button></td></tr>'; }).join(''); }
+        function updateKPIs() { const sold = watches.filter(w => w.status === 'Sold'); const inStock = watches.filter(w => w.status === 'In Stock'); const revenue = sold.reduce((s, w) => s + (w.salePrice || 0), 0); const costs = watches.reduce((s, w) => s + (w.totalCost || 0), 0); const profit = sold.reduce((s, w) => s + (w.profit || 0), 0); const inventory = inStock.reduce((s, w) => s + (w.totalCost || 0), 0); document.getElementById('kpiRevenue').textContent = formatCurrency(revenue); document.getElementById('kpiCosts').textContent = formatCurrency(costs); document.getElementById('kpiProfit').textContent = formatCurrency(profit); document.getElementById('kpiProfit').className = 'value ' + (profit >= 0 ? 'success' : 'danger'); document.getElementById('kpiInventory').textContent = formatCurrency(inventory); }
+        function updateCharts() { const brandData = {}; watches.forEach(w => brandData[w.brand] = (brandData[w.brand] || 0) + 1); if (charts.brand) charts.brand.destroy(); charts.brand = new Chart(document.getElementById('brandChart'), { type: 'doughnut', data: { labels: Object.keys(brandData), datasets: [{ data: Object.values(brandData), backgroundColor: ['#1a237e', '#3949ab', '#5c6bc0', '#7986cb', '#9fa8da', '#c5cae9'] }] }, options: { responsive: true, maintainAspectRatio: true } }); const profits = watches.map(w => w.profit || 0); if (charts.profit) charts.profit.destroy(); charts.profit = new Chart(document.getElementById('profitChart'), { type: 'bar', data: { labels: watches.map(w => w.sku), datasets: [{ label: 'Profit', data: profits, backgroundColor: profits.map(p => p >= 0 ? '#4caf50' : '#f44336') }] }, options: { responsive: true, maintainAspectRatio: true, scales: { y: { beginAtZero: true } } } }); }
+        function showImagePreview(src) { const p = document.getElementById('imagePreview'); if (src) { p.src = src; p.style.display = 'block'; } else { p.style.display = 'none'; } }
+        function openModal(id) { currentEditId = id; document.getElementById('modalTitle').textContent = id ? 'Edit Watch' : 'Add Watch'; document.getElementById('deleteBtn').style.display = id ? 'inline-flex' : 'none'; if (id) { const w = watches.find(x => x.id === id); document.getElementById('editSku').value = w.sku || ''; document.getElementById('editBrand').value = w.brand || ''; document.getElementById('editModel').value = w.model || ''; document.getElementById('editReference').value = w.reference || ''; document.getElementById('editYear').value = w.year || ''; document.getElementById('editSize').value = w.size || ''; document.getElementById('editDial').value = w.dial || ''; document.getElementById('editCase').value = w.caseMat || ''; document.getElementById('editStrap').value = w.strap || ''; document.getElementById('editStatus').value = w.status || 'In Stock'; document.getElementById('editPurchaseDate').value = w.purchaseDate || ''; document.getElementById('editPurchasePrice').value = w.purchasePrice || ''; document.getElementById('editTariffs').value = w.tariffsTax || ''; document.getElementById('editService').value = w.service || ''; document.getElementById('editOtherCosts').value = w.otherCosts || ''; document.getElementById('editTotalCost').value = w.totalCost || ''; document.getElementById('editSaleDate').value = w.saleDate || ''; document.getElementById('editSalePrice').value = w.salePrice || ''; document.getElementById('editPlatform').value = w.platform || ''; document.getElementById('editPlatformFee').value = w.platformFee || ''; document.getElementById('editShipping').value = w.shipping || ''; document.getElementById('editNet').value = w.net || ''; document.getElementById('editProfit').value = w.profit || ''; document.getElementById('editMargin').value = w.margin || ''; document.getElementById('editImageUrl').value = w.imageUrl || ''; showImagePreview(w.imageUrl || w.image || ''); } else { document.querySelectorAll('#editModal input').forEach(i => i.value = ''); document.getElementById('editStatus').value = 'In Stock'; document.getElementById('imagePreview').style.display = 'none'; } document.getElementById('editModal').classList.add('active'); }
+        function closeModal() { document.getElementById('editModal').classList.remove('active'); currentEditId = null; }
+        function updatePreview() { showImagePreview(document.getElementById('editImageUrl').value); }
+        function handleUpload(input) { if (input.files && input.files[0]) { const r = new FileReader(); r.onload = function(e) { document.getElementById('editImageUrl').value = ''; showImagePreview(e.target.result); }; r.readAsDataURL(input.files[0]); } }
+        function calcTotals() { const pp = parseFloat(document.getElementById('editPurchasePrice').value) || 0; const tar = parseFloat(document.getElementById('editTariffs').value) || 0; const svc = parseFloat(document.getElementById('editService').value) || 0; const other = parseFloat(document.getElementById('editOtherCosts').value) || 0; const tc = pp + tar + svc + other; document.getElementById('editTotalCost').value = tc.toFixed(2); const sp = parseFloat(document.getElementById('editSalePrice').value) || 0; const pf = parseFloat(document.getElementById('editPlatformFee').value) || 0; const ship = parseFloat(document.getElementById('editShipping').value) || 0; const net = sp - pf - ship; document.getElementById('editNet').value = net.toFixed(2); const profit = net - tc; document.getElementById('editProfit').value = profit.toFixed(2); const margin = sp > 0 ? (profit / sp) * 100 : 0; document.getElementById('editMargin').value = margin.toFixed(2); }
         function saveWatch() { const imgSrc = document.getElementById('imagePreview').style.display === 'block' ? document.getElementById('imagePreview').src : ''; const isUploaded = imgSrc && imgSrc.startsWith('data:'); const w = { id: currentEditId || Math.max(...watches.map(x => x.id), 0) + 1, sku: document.getElementById('editSku').value, brand: document.getElementById('editBrand').value, model: document.getElementById('editModel').value, reference: document.getElementById('editReference').value, year: document.getElementById('editYear').value, size: parseFloat(document.getElementById('editSize').value) || null, dial: document.getElementById('editDial').value, caseMat: document.getElementById('editCase').value, strap: document.getElementById('editStrap').value, status: document.getElementById('editStatus').value, purchaseDate: document.getElementById('editPurchaseDate').value, purchasePrice: parseFloat(document.getElementById('editPurchasePrice').value) || 0, tariffsTax: parseFloat(document.getElementById('editTariffs').value) || 0, service: parseFloat(document.getElementById('editService').value) || 0, otherCosts: parseFloat(document.getElementById('editOtherCosts').value) || 0, totalCost: parseFloat(document.getElementById('editTotalCost').value) || 0, saleDate: document.getElementById('editSaleDate').value, salePrice: parseFloat(document.getElementById('editSalePrice').value) || 0, platform: document.getElementById('editPlatform').value, platformFee: parseFloat(document.getElementById('editPlatformFee').value) || 0, shipping: parseFloat(document.getElementById('editShipping').value) || 0, net: parseFloat(document.getElementById('editNet').value) || 0, profit: parseFloat(document.getElementById('editProfit').value) || 0, margin: parseFloat(document.getElementById('editMargin').value) || 0, imageUrl: isUploaded ? '' : document.getElementById('editImageUrl').value, image: isUploaded ? imgSrc : '' }; if (currentEditId) { const i = watches.findIndex(x => x.id === currentEditId); watches[i] = w; } else { watches.push(w); } closeModal(); updateAll(); }
         function deleteWatch() { if (currentEditId && confirm('Delete this watch?')) { watches = watches.filter(w => w.id !== currentEditId); closeModal(); updateAll(); } }
         function exportData() { const b = new Blob([JSON.stringify(watches, null, 2)], { type: 'application/json' }); const u = URL.createObjectURL(b); const a = document.createElement('a'); a.href = u; a.download = 'gtv_inventory_' + new Date().toISOString().split('T')[0] + '.json'; a.click(); URL.revokeObjectURL(u); }
         function importData(input) { if (input.files && input.files[0]) { const r = new FileReader(); r.onload = function(e) { try { watches = JSON.parse(e.target.result); updateAll(); alert('Imported!'); } catch (err) { alert('Error: ' + err.message); } }; r.readAsText(input.files[0]); } }
-        
-        // Server-side view functions
-        async function saveView() {
-            const name = prompt('View name:');
-            if (!name) return;
-            try {
-                const response = await fetch(API_URL, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-Password': CORRECT_PASSWORD
-                    },
-                    body: JSON.stringify({
-                        action: 'save',
-                        view: {
-                            name: name,
-                            timestamp: new Date().toISOString(),
-                            watches: watches
-                        }
-                    })
-                });
-                const data = await response.json();
-                if (data.success) {
-                    alert('View saved to server!');
-                } else {
-                    alert('Error: ' + (data.error || 'Failed to save'));
-                }
-            } catch (err) {
-                alert('Error saving view: ' + err.message);
-            }
-        }
-        
-        async function loadView() {
-            try {
-                const response = await fetch(API_URL, {
-                    method: 'GET',
-                    headers: {
-                        'X-Password': CORRECT_PASSWORD
-                    }
-                });
-                const data = await response.json();
-                const c = document.getElementById('savedViewsList');
-                if (!data.success || !data.views || data.views.length === 0) {
-                    c.innerHTML = '<p style="text-align:center;color:#666;padding:20px;">No saved views on server.</p>';
-                } else {
-                    c.innerHTML = data.views.map(v => '<div class="view-item"><div><div class="view-name">' + v.name + '</div><div class="view-meta">' + new Date(v.timestamp).toLocaleString() + ' - ' + v.watchCount + ' watches</div></div><button class="btn btn-primary btn-small" onclick="loadViewData(' + v.id + ')">Load</button></div>').join('');
-                }
-                document.getElementById('loadViewModal').classList.add('active');
-            } catch (err) {
-                alert('Error loading views: ' + err.message);
-            }
-        }
-        
-        async function loadViewData(id) {
-            try {
-                const response = await fetch(API_URL, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-Password': CORRECT_PASSWORD
-                    },
-                    body: JSON.stringify({
-                        action: 'load',
-                        id: id
-                    })
-                });
-                const data = await response.json();
-                if (data.success && data.view) {
-                    watches = data.view.watches;
-                    updateAll();
-                    closeLoadViewModal();
-                } else {
-                    alert('Error: ' + (data.error || 'View not found'));
-                }
-            } catch (err) {
-                alert('Error loading view: ' + err.message);
-            }
-        }
-        
+        function saveView() { const name = prompt('View name:'); if (!name) return; const views = JSON.parse(localStorage.getItem('gtv_views') || '[]'); views.push({ id: Date.now(), name: name, timestamp: new Date().toISOString(), watches: watches }); localStorage.setItem('gtv_views', JSON.stringify(views)); alert('Saved!'); }
+        function loadView() { const views = JSON.parse(localStorage.getItem('gtv_views') || '[]'); const c = document.getElementById('savedViewsList'); if (views.length === 0) { c.innerHTML = '<p style="text-align:center;color:#666;padding:20px;">No saved views.</p>'; } else { c.innerHTML = views.map(v => '<div style="padding:16px;border-bottom:1px solid #eee;display:flex;justify-content:space-between;align-items:center;"><div><div style="font-weight:600;">' + v.name + '</div><div style="font-size:12px;color:#666;">' + new Date(v.timestamp).toLocaleString() + ' - ' + v.watches.length + ' watches</div></div><button class="btn btn-primary btn-small" onclick="loadViewData(' + v.id + ')">Load</button></div>').join(''); } document.getElementById('loadViewModal').classList.add('active'); }
+        function loadViewData(id) { const views = JSON.parse(localStorage.getItem('gtv_views') || '[]'); const v = views.find(x => x.id === id); if (v) { watches = v.watches; updateAll(); closeLoadViewModal(); } }
         function closeLoadViewModal() { document.getElementById('loadViewModal').classList.remove('active'); }
         if (sessionStorage.getItem('gtv_auth') === 'true') updateAll();
     </script>
