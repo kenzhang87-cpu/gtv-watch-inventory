@@ -2,6 +2,9 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GTV - Watch Inventory & P&L Tracker</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -541,7 +544,7 @@
         .logout-btn:hover {
             background: rgba(255,255,255,0.3);
         }
-        #mainContent { display: none; }
+        #mainContent { display: block; }
         #mainContent.authenticated { display: block; }
         @media (max-width: 768px) {
             .container { padding: 12px; }
@@ -560,7 +563,7 @@
     </style>
 </head>
 <body>
-    <div class="modal-overlay always-visible" id="loginModal">
+    <div class="modal-overlay" style="display:none;" id="loginModal">
         <div class="modal login-modal">
             <div class="modal-body">
                 <div class="login-icon">⌚</div>
@@ -767,21 +770,25 @@
         const CORRECT_PASSWORD = 'Lenny365';
         const AUTH_KEY = 'gtv_auth';
 
-        function checkAuth() {
+        function checkAuth() { showMainContent(); return;
             if (sessionStorage.getItem(AUTH_KEY) === 'true') {
                 showMainContent();
             }
         }
 
         function doLogin() {
+            console.log('doLogin called');
             const passwordInput = document.getElementById('loginPassword');
             const errorDiv = document.getElementById('loginError');
             const password = passwordInput.value;
+            console.log('Password entered:', password ? 'yes' : 'no');
 
             if (password === CORRECT_PASSWORD) {
+                console.log('Password correct, setting auth');
                 sessionStorage.setItem(AUTH_KEY, 'true');
                 showMainContent();
             } else {
+                console.log('Password incorrect');
                 passwordInput.classList.add('has-error');
                 errorDiv.textContent = 'Incorrect password. Please try again.';
                 passwordInput.value = '';
@@ -801,19 +808,17 @@
             updateAll();
         }
 
-        let watches = [
-            {id:1,sku:'001',brand:'Omega',model:'Seamaster 30 Linen Dial',description:'',reference:'125.003-62',year:'1962-63',size:35,dial:'Silver',caseMat:'Stainless Steel',strap:'Leather',purchaseDate:'2026-01-14',purchasePrice:687.50,tariffsTax:55.19,service:377,otherCosts:0,totalCost:1119.69,salePrice:1800,platform:'Chrono24',platformFee:117,shipping:100,net:1583,profit:463.31,margin:25.74,status:'Sold',saleDate:'2026-01-20',image:'',imageUrl:''},
-            {id:2,sku:'002',brand:'Vacheron Constantin',model:'4322 18k Shell Lugs',description:'',reference:'4322',year:'1945',size:35.5,dial:'White',caseMat:'14k Gold',strap:'Leather',purchaseDate:'2026-01-08',purchasePrice:4106.40,tariffsTax:501,service:450,otherCosts:0,totalCost:5057.40,salePrice:6750,platform:'eBay',platformFee:495,shipping:100,net:6155,profit:1097.60,margin:16.26,status:'Sold',saleDate:'2026-02-15',image:''},
-            {id:3,sku:'003',brand:'Tudor',model:'Prince Date+Day Jumbo Blue Dial Italian Day',description:'',reference:'7019/4',year:'1969-70',size:38,dial:'Blue',caseMat:'Stainless Steel',strap:'Stainless Steel',purchaseDate:'2026-01-14',purchasePrice:2125,tariffsTax:170.58,service:400,otherCosts:0,totalCost:2695.58,salePrice:4000,platform:'eBay',platformFee:330,shipping:100,net:3570,profit:874.42,margin:21.86,status:'Sold',saleDate:'2026-02-28',image:''},
-            {id:4,sku:'004',brand:'IWC',model:'Dress White Gold Hands',description:'',reference:'',year:'1955',size:35,dial:'Cream',caseMat:'Stainless Steel',strap:'Leather',purchaseDate:'2026-01-14',purchasePrice:875,tariffsTax:70.24,service:500,otherCosts:0,totalCost:1445.24,salePrice:1700,platform:'Shopify',platformFee:49.60,shipping:100,net:1550.40,profit:105.16,margin:6.19,status:'Sold',saleDate:'2026-03-01',image:''},
-            {id:5,sku:'005',brand:'Tudor',model:'Prince Date+Day Jumbo Gold Plated NOS',description:'',reference:'7019/1',year:'1969',size:38,dial:'Gold',caseMat:'Gold plated',strap:'Gold plated',purchaseDate:'2026-01-20',purchasePrice:6460,tariffsTax:0,service:0,otherCosts:0,totalCost:6460,salePrice:8000,platform:'eBay',platformFee:570,shipping:100,net:7330,profit:870,margin:10.88,status:'Sold',saleDate:'2026-03-15',image:''},
-            {id:6,sku:'006',brand:'Longines',model:'14K Tank Sweeping Lugs',description:'',reference:'',year:'1940s',size:null,dial:'White',caseMat:'14k Gold',strap:'',purchaseDate:'2026-01-24',purchasePrice:939.22,tariffsTax:80.78,service:0,otherCosts:0,totalCost:1020,salePrice:1350,platform:'eBay',platformFee:171,shipping:100,net:1079,profit:59,margin:4.37,status:'Sold',saleDate:'2026-03-20',image:''},
-            {id:7,sku:'007',brand:'Rolex',model:'Air King Rare Pre-Precision Dial',description:'',reference:'5500',year:'1981',size:34,dial:'Cream',caseMat:'Stainless Steel',strap:'Stainless Steel Jubilee',purchaseDate:'2026-03-30',purchasePrice:2048.73,tariffsTax:0,service:0,otherCosts:0,totalCost:2048.73,salePrice:3500,platform:'eBay',platformFee:300,shipping:100,net:3100,profit:1051.27,margin:30.04,status:'In Stock',saleDate:'',image:'',imageUrl:''},
-            {id:8,sku:'008',brand:'Rolex',model:'Datejust Two Tone Champagne Dial',description:'',reference:'16013',year:'1980',size:36,dial:'Champagne',caseMat:'Two Tone',strap:'Two Tone Jubilee',purchaseDate:'2026-03-30',purchasePrice:3888.73,tariffsTax:0,service:0,otherCosts:0,totalCost:3888.73,salePrice:5500,platform:'eBay',platformFee:420,shipping:100,net:4980,profit:1091.27,margin:19.84,status:'In Stock',saleDate:'',image:'',imageUrl:''}
-        ];
+        
+                }
+            } catch (err) {
+                console.log('No saved views found or error loading views, using default data');
+            }
+            updateAll();
+        }
+
+        let watches = [{"id":1,"sku":"001","brand":"Omega","model":"Seamaster 30 Linen Dial","description":"","reference":"125.003-62","year":"1962-63","size":35,"dial":"Silver","caseMat":"Stainless Steel","strap":"Leather","purchaseDate":"2026-01-14","purchasePrice":687.5,"tariffsTax":55.19,"service":377,"otherCosts":0,"totalCost":1119.69,"salePrice":1800,"platform":"Chrono24","platformFee":117,"shipping":100,"net":1583,"profit":463.31,"margin":25.74,"status":"In Stock","saleDate":"2026-01-20","image":"","imageUrl":"https://goodtimevintage.net/cdn/shop/files/FullSizeRender_8d4c27c9-9edb-4260-811f-930396c928dd.jpg?v=1773850734&width=832"},{"id":2,"sku":"002","brand":"Vacheron Constantin","model":"4322 18k Shell Lugs","description":"","reference":"4322","year":"1945","size":35.5,"dial":"White","caseMat":"14k Gold","strap":"Leather","purchaseDate":"2026-01-08","purchasePrice":4106.4,"tariffsTax":501,"service":450,"otherCosts":0,"totalCost":5057.4,"salePrice":6750,"platform":"eBay","platformFee":495,"shipping":100,"net":6155,"profit":1097.6,"margin":16.26,"status":"In Stock","saleDate":"2026-02-15","image":"","imageUrl":"https://goodtimevintage.net/cdn/shop/files/FullSizeRender_060d2f04-51a7-4f41-90bb-eed110611123.heic?v=1772940135&width=832"},{"id":3,"sku":"003","brand":"Tudor","model":"Prince Date+Day Jumbo Blue Dial Italian Day","description":"","reference":"7019/4","year":"1969-70","size":38,"dial":"Blue","caseMat":"Stainless Steel","strap":"Stainless Steel","purchaseDate":"2026-01-14","purchasePrice":2125,"tariffsTax":170.58,"service":400,"otherCosts":0,"totalCost":2695.58,"salePrice":4000,"platform":"eBay","platformFee":330,"shipping":100,"net":3570,"profit":874.42,"margin":21.86,"status":"Pending","saleDate":"2026-02-28","image":"","imageUrl":"https://goodtimevintage.net/cdn/shop/files/27678AF7-1EFD-4402-B0AF-A2602EF21F2A.jpg?v=1768524857&width=832"},{"id":4,"sku":"004","brand":"IWC","model":"Dress White Gold Hands","description":"","reference":"","year":"1955","size":35,"dial":"White","caseMat":"Stainless Steel","strap":"Leather","purchaseDate":"2026-01-14","purchasePrice":875,"tariffsTax":70.24,"service":500,"otherCosts":0,"totalCost":1445.24,"salePrice":1700,"platform":"Shopify","platformFee":49.6,"shipping":100,"net":1550.4,"profit":105.16,"margin":6.19,"status":"In Stock","saleDate":"2026-03-01","image":"","imageUrl":"https://goodtimevintage.net/cdn/shop/files/FE5DB6B7-2BEC-4B43-9826-1C3953D74030.jpg?v=1768581423&width=832"},{"id":5,"sku":"005","brand":"Tudor","model":"Prince Date+Day Jumbo Gold Plated NOS","description":"","reference":"7019/1","year":"1969","size":38,"dial":"Gold","caseMat":"Gold plated","strap":"Gold plated","purchaseDate":"2026-01-20","purchasePrice":6460,"tariffsTax":0,"service":0,"otherCosts":0,"totalCost":6460,"salePrice":8000,"platform":"eBay","platformFee":570,"shipping":100,"net":7330,"profit":870,"margin":10.88,"status":"In Stock","saleDate":"2026-03-15","image":"","imageUrl":""},{"id":6,"sku":"006","brand":"Longines","model":"14K Tank Sweeping Lugs","description":"","reference":"","year":"1940s","size":null,"dial":"White","caseMat":"14k Gold","strap":"","purchaseDate":"2026-01-24","purchasePrice":939.22,"tariffsTax":80.78,"service":0,"otherCosts":0,"totalCost":1020,"salePrice":1350,"platform":"eBay","platformFee":171,"shipping":100,"net":1079,"profit":59,"margin":4.37,"status":"In Stock","saleDate":"2026-03-20","image":"","imageUrl":"https://goodtimevintage.net/cdn/shop/files/FC28F77F-42AE-477E-A420-E343E0C31434.jpg?v=1768953397&width=832"},{"id":7,"sku":"007","brand":"Rolex","model":"Air King Rare Pre-Precision Dial","description":"","reference":"5500","year":"1981","size":34,"dial":"Cream","caseMat":"Stainless Steel","strap":"Stainless Steel Jubilee","purchaseDate":"2026-03-30","purchasePrice":2048.73,"tariffsTax":0,"service":0,"otherCosts":0,"totalCost":2048.73,"salePrice":3500,"platform":"eBay","platformFee":300,"shipping":100,"net":3100,"profit":1051.27,"margin":30.04,"status":"In Stock","saleDate":"","image":"","imageUrl":""},{"id":8,"sku":"008","brand":"Rolex","model":"Datejust Two Tone Champagne Dial","description":"","reference":"16013","year":"1980","size":36,"dial":"Champagne","caseMat":"Two Tone","strap":"Two Tone Jubilee","purchaseDate":"2026-03-30","purchasePrice":3888.73,"tariffsTax":0,"service":0,"otherCosts":0,"totalCost":3888.73,"salePrice":5500,"platform":"eBay","platformFee":420,"shipping":100,"net":4980,"profit":1091.27,"margin":19.84,"status":"In Stock","saleDate":"","image":"","imageUrl":"https://goodtimevintage.net/cdn/shop/files/FullSizeRender_e788b767-9cf8-414d-a387-1d19cd080f5d.jpg?v=1774284211&width=832"}];
 
         let charts = {};
-        const VIEWS_STORAGE_KEY = 'gtv-saved-views';
         const MAX_IMAGE_SIZE_MB = 5;
 
         function formatCurrency(value) {
@@ -1124,95 +1129,143 @@
             watch.imageUrl = document.getElementById('editImageUrl').value || '';
 
             calculateWatch(watch);
-            updateAll();
+            await loadMostRecentView();
             closeModal();
         }
 
-        function openSaveViewModal() {
-            document.getElementById('viewNameInput').value = '';
-            document.getElementById('saveViewModal').classList.add('active');
-            document.getElementById('viewNameInput').focus();
+        // Server-side views API functions (replaces localStorage)
+const API_URL = "/gtv/api";
+
+async function apiRequest(method, data = null) {
+    const options = {
+        method: method,
+        headers: {
+            "Content-Type": "application/json",
+            "X-Password": CORRECT_PASSWORD
         }
+    };
+    if (data) {
+        options.body = JSON.stringify(data);
+    }
+    const response = await fetch(API_URL, options);
+    if (!response.ok) {
+        const error = await response.json().catch(() => ({ error: "Unknown error" }));
+        throw new Error(error.error || `HTTP ${response.status}`);
+    }
+    return response.json();
+}
 
-        function closeSaveViewModal() {
-            document.getElementById('saveViewModal').classList.remove('active');
-        }
+function openSaveViewModal() {
+    document.getElementById('viewNameInput').value = '';
+    document.getElementById('saveViewModal').classList.add('active');
+    document.getElementById('viewNameInput').focus();
+}
 
-        function saveCurrentView() {
-            const name = document.getElementById('viewNameInput').value.trim();
-            if (!name) {
-                alert('Please enter a name for this view');
-                return;
-            }
+function closeSaveViewModal() {
+    document.getElementById('saveViewModal').classList.remove('active');
+}
 
-            const savedViews = JSON.parse(localStorage.getItem(VIEWS_STORAGE_KEY) || '[]');
-            const view = {
-                id: Date.now(),
-                name: name,
-                timestamp: new Date().toISOString(),
-                watches: JSON.parse(JSON.stringify(watches))
-            };
+async function saveCurrentView() {
+    const name = document.getElementById('viewNameInput').value.trim();
+    if (!name) {
+        alert('Please enter a name for this view');
+        return;
+    }
 
-            savedViews.push(view);
-            localStorage.setItem(VIEWS_STORAGE_KEY, JSON.stringify(savedViews));
+    try {
+        const view = {
+            id: Date.now(),
+            name: name,
+            timestamp: new Date().toISOString(),
+            watches: JSON.parse(JSON.stringify(watches))
+        };
+
+        const result = await apiRequest('POST', { action: 'save', view: view });
+        if (result.success) {
             closeSaveViewModal();
             alert('View saved successfully!');
+        } else {
+            alert('Failed to save view: ' + (result.error || 'Unknown error'));
         }
+    } catch (err) {
+        alert('Error saving view: ' + err.message);
+    }
+}
 
-        function openLoadViewModal() {
-            const savedViews = JSON.parse(localStorage.getItem(VIEWS_STORAGE_KEY) || '[]');
-            const container = document.getElementById('viewsList');
+async function openLoadViewModal() {
+    const container = document.getElementById('viewsList');
+    container.innerHTML = '<div class="empty-state">Loading views...</div>';
+    document.getElementById('loadViewModal').classList.add('active');
 
-            if (savedViews.length === 0) {
-                container.innerHTML = '<div class="empty-state">No saved views found</div>';
-            } else {
-                container.innerHTML = savedViews.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)).map(view => {
+    try {
+        const result = await apiRequest('GET');
+        if (result.success && result.views && result.views.length > 0) {
+            container.innerHTML = result.views
+                .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+                .map(view => {
                     const date = new Date(view.timestamp).toLocaleString();
-                    const watchCount = view.watches ? view.watches.length : 0;
+                    const watchCount = view.watchCount || 0;
                     return '<div class="view-item">' +
                         '<div class="view-item-info" onclick="loadView(' + view.id + ')">' +
                             '<h4>' + escapeHtml(view.name) + '</h4>' +
-                            '<span>' + date + ' • ' + watchCount + ' watches</span>' +
+                            '<span>' + date + ' &bull; ' + watchCount + ' watches</span>' +
                         '</div>' +
                         '<div class="view-item-actions">' +
                             '<button class="btn btn-sm btn-danger" onclick="event.stopPropagation(); deleteViewItem(' + view.id + ')">Delete</button>' +
                         '</div>' +
                     '</div>';
                 }).join('');
-            }
-
-            document.getElementById('loadViewModal').classList.add('active');
+        } else {
+            container.innerHTML = '<div class="empty-state">No saved views found</div>';
         }
+    } catch (err) {
+        container.innerHTML = '<div class="empty-state">Error loading views: ' + escapeHtml(err.message) + '</div>';
+    }
+}
 
-        function closeLoadViewModal() {
-            document.getElementById('loadViewModal').classList.remove('active');
-        }
+function closeLoadViewModal() {
+    document.getElementById('loadViewModal').classList.remove('active');
+}
 
-        function loadView(viewId) {
-            const savedViews = JSON.parse(localStorage.getItem(VIEWS_STORAGE_KEY) || '[]');
-            const view = savedViews.find(v => v.id === viewId);
-            if (!view || !view.watches) return;
-
+async function loadView(viewId) {
+    try {
+        const result = await apiRequest('POST', { action: 'load', id: viewId });
+        if (result.success && result.view) {
+            const view = result.view;
             if (confirm('Load view "' + view.name + '"? This will replace your current data.')) {
                 watches = JSON.parse(JSON.stringify(view.watches));
                 watches.forEach(w => calculateWatch(w));
-                updateAll();
+                await loadMostRecentView();
                 closeLoadViewModal();
             }
+        } else {
+            alert('Failed to load view: ' + (result.error || 'Unknown error'));
         }
+    } catch (err) {
+        alert('Error loading view: ' + err.message);
+    }
+}
 
-        function deleteViewItem(viewId) {
-            const savedViews = JSON.parse(localStorage.getItem(VIEWS_STORAGE_KEY) || '[]');
-            const updatedViews = savedViews.filter(v => v.id !== viewId);
-            localStorage.setItem(VIEWS_STORAGE_KEY, JSON.stringify(updatedViews));
-            openLoadViewModal();
+async function deleteViewItem(viewId) {
+    if (!confirm('Delete this saved view?')) return;
+    
+    try {
+        const result = await apiRequest('DELETE', { id: viewId });
+        if (result.success) {
+            openLoadViewModal(); // Refresh the list
+        } else {
+            alert('Failed to delete view: ' + (result.error || 'Unknown error'));
         }
+    } catch (err) {
+        alert('Error deleting view: ' + err.message);
+    }
+}
 
-        function escapeHtml(text) {
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
 
         function updateCharts() {
             const soldWatches = watches.filter(w => w.status === 'Sold' && w.saleDate);
@@ -1353,14 +1406,14 @@
                 imageUrl: ''
             };
             watches.push(newWatch);
-            updateAll();
+            await loadMostRecentView();
             openEditModal(newId);
         }
 
         function deleteWatch(id) {
             if (confirm('Are you sure you want to delete this watch?')) {
                 watches = watches.filter(w => w.id !== id);
-                updateAll();
+                await loadMostRecentView();
             }
         }
 
@@ -1387,7 +1440,7 @@
                     if (Array.isArray(imported)) {
                         watches = imported;
                         watches.forEach(w => calculateWatch(w));
-                        updateAll();
+                        await loadMostRecentView();
                         alert('Data imported successfully!');
                     } else {
                         alert('Invalid file format');
