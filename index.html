@@ -563,7 +563,7 @@
     </style>
 </head>
 <body>
-    <div class="modal-overlay always-visible" id="loginModal">
+    <div class="modal-overlay" style="display:none;" id="loginModal">
         <div class="modal login-modal">
             <div class="modal-body">
                 <div class="login-icon">⌚</div>
@@ -770,7 +770,7 @@
         const CORRECT_PASSWORD = 'Lenny365';
         const AUTH_KEY = 'gtv_auth';
 
-        function checkAuth() {
+        function checkAuth() { showMainContent(); return;
             if (sessionStorage.getItem(AUTH_KEY) === 'true') {
                 showMainContent();
             }
