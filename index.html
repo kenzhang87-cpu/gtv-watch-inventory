@@ -777,14 +777,18 @@
         }
 
         function doLogin() {
+            console.log('doLogin called');
             const passwordInput = document.getElementById('loginPassword');
             const errorDiv = document.getElementById('loginError');
             const password = passwordInput.value;
+            console.log('Password entered:', password ? 'yes' : 'no');
 
             if (password === CORRECT_PASSWORD) {
+                console.log('Password correct, setting auth');
                 sessionStorage.setItem(AUTH_KEY, 'true');
                 showMainContent();
             } else {
+                console.log('Password incorrect');
                 passwordInput.classList.add('has-error');
                 errorDiv.textContent = 'Incorrect password. Please try again.';
                 passwordInput.value = '';
@@ -798,10 +802,18 @@
         }
 
         async function showMainContent() {
-            document.getElementById('loginModal').classList.remove('always-visible');
-            document.getElementById('loginModal').style.display = 'none';
-            document.getElementById('mainContent').classList.add('authenticated');
-            await loadMostRecentView();
+            console.log('showMainContent called');
+            try {
+                document.getElementById('loginModal').classList.remove('always-visible');
+                document.getElementById('loginModal').style.display = 'none';
+                document.getElementById('mainContent').classList.add('authenticated');
+                console.log('Modal hidden, loading view...');
+                await loadMostRecentView();
+                console.log('View loaded successfully');
+            } catch (err) {
+                console.error('Error in showMainContent:', err);
+                alert('Error loading: ' + err.message);
+            }
         }
 
         async function loadMostRecentView() {
