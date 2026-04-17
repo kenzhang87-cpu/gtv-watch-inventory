@@ -2,9 +2,6 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-    <meta http-equiv="Pragma" content="no-cache">
-    <meta http-equiv="Expires" content="0">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GTV - Watch Inventory & P&L Tracker</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -544,7 +541,7 @@
         .logout-btn:hover {
             background: rgba(255,255,255,0.3);
         }
-        #mainContent { display: block; }
+        #mainContent { display: none; }
         #mainContent.authenticated { display: block; }
         @media (max-width: 768px) {
             .container { padding: 12px; }
@@ -563,7 +560,7 @@
     </style>
 </head>
 <body>
-    <div class="modal-overlay" style="display:none;" id="loginModal">
+    <div class="modal-overlay always-visible" id="loginModal">
         <div class="modal login-modal">
             <div class="modal-body">
                 <div class="login-icon">⌚</div>
@@ -770,25 +767,21 @@
         const CORRECT_PASSWORD = 'Lenny365';
         const AUTH_KEY = 'gtv_auth';
 
-        function checkAuth() { showMainContent(); return;
+        function checkAuth() {
             if (sessionStorage.getItem(AUTH_KEY) === 'true') {
                 showMainContent();
             }
         }
 
         function doLogin() {
-            console.log('doLogin called');
             const passwordInput = document.getElementById('loginPassword');
             const errorDiv = document.getElementById('loginError');
             const password = passwordInput.value;
-            console.log('Password entered:', password ? 'yes' : 'no');
 
             if (password === CORRECT_PASSWORD) {
-                console.log('Password correct, setting auth');
                 sessionStorage.setItem(AUTH_KEY, 'true');
                 showMainContent();
             } else {
-                console.log('Password incorrect');
                 passwordInput.classList.add('has-error');
                 errorDiv.textContent = 'Incorrect password. Please try again.';
                 passwordInput.value = '';
@@ -808,14 +801,6 @@
             updateAll();
         }
 
-        
-                }
-            } catch (err) {
-                console.log('No saved views found or error loading views, using default data');
-            }
-            updateAll();
-        }
-
         let watches = [
             {id:1,sku:'001',brand:'Omega',model:'Seamaster 30 Linen Dial',description:'',reference:'125.003-62',year:'1962-63',size:35,dial:'Silver',caseMat:'Stainless Steel',strap:'Leather',purchaseDate:'2026-01-14',purchasePrice:687.50,tariffsTax:55.19,service:377,otherCosts:0,totalCost:1119.69,salePrice:1800,platform:'Chrono24',platformFee:117,shipping:100,net:1583,profit:463.31,margin:25.74,status:'Sold',saleDate:'2026-01-20',image:'',imageUrl:''},
             {id:2,sku:'002',brand:'Vacheron Constantin',model:'4322 18k Shell Lugs',description:'',reference:'4322',year:'1945',size:35.5,dial:'White',caseMat:'14k Gold',strap:'Leather',purchaseDate:'2026-01-08',purchasePrice:4106.40,tariffsTax:501,service:450,otherCosts:0,totalCost:5057.40,salePrice:6750,platform:'eBay',platformFee:495,shipping:100,net:6155,profit:1097.60,margin:16.26,status:'Sold',saleDate:'2026-02-15',image:''},
@@ -828,6 +813,7 @@
         ];
 
         let charts = {};
+        const VIEWS_STORAGE_KEY = 'gtv-saved-views';
         const MAX_IMAGE_SIZE_MB = 5;
 
         function formatCurrency(value) {
@@ -1138,143 +1124,95 @@
             watch.imageUrl = document.getElementById('editImageUrl').value || '';
 
             calculateWatch(watch);
-            await loadMostRecentView();
+            updateAll();
             closeModal();
         }
 
-        // Server-side views API functions (replaces localStorage)
-const API_URL = "/gtv/api";
-
-async function apiRequest(method, data = null) {
-    const options = {
-        method: method,
-        headers: {
-            "Content-Type": "application/json",
-            "X-Password": CORRECT_PASSWORD
+        function openSaveViewModal() {
+            document.getElementById('viewNameInput').value = '';
+            document.getElementById('saveViewModal').classList.add('active');
+            document.getElementById('viewNameInput').focus();
         }
-    };
-    if (data) {
-        options.body = JSON.stringify(data);
-    }
-    const response = await fetch(API_URL, options);
-    if (!response.ok) {
-        const error = await response.json().catch(() => ({ error: "Unknown error" }));
-        throw new Error(error.error || `HTTP ${response.status}`);
-    }
-    return response.json();
-}
 
-function openSaveViewModal() {
-    document.getElementById('viewNameInput').value = '';
-    document.getElementById('saveViewModal').classList.add('active');
-    document.getElementById('viewNameInput').focus();
-}
+        function closeSaveViewModal() {
+            document.getElementById('saveViewModal').classList.remove('active');
+        }
 
-function closeSaveViewModal() {
-    document.getElementById('saveViewModal').classList.remove('active');
-}
+        function saveCurrentView() {
+            const name = document.getElementById('viewNameInput').value.trim();
+            if (!name) {
+                alert('Please enter a name for this view');
+                return;
+            }
 
-async function saveCurrentView() {
-    const name = document.getElementById('viewNameInput').value.trim();
-    if (!name) {
-        alert('Please enter a name for this view');
-        return;
-    }
+            const savedViews = JSON.parse(localStorage.getItem(VIEWS_STORAGE_KEY) || '[]');
+            const view = {
+                id: Date.now(),
+                name: name,
+                timestamp: new Date().toISOString(),
+                watches: JSON.parse(JSON.stringify(watches))
+            };
 
-    try {
-        const view = {
-            id: Date.now(),
-            name: name,
-            timestamp: new Date().toISOString(),
-            watches: JSON.parse(JSON.stringify(watches))
-        };
-
-        const result = await apiRequest('POST', { action: 'save', view: view });
-        if (result.success) {
+            savedViews.push(view);
+            localStorage.setItem(VIEWS_STORAGE_KEY, JSON.stringify(savedViews));
             closeSaveViewModal();
             alert('View saved successfully!');
-        } else {
-            alert('Failed to save view: ' + (result.error || 'Unknown error'));
         }
-    } catch (err) {
-        alert('Error saving view: ' + err.message);
-    }
-}
 
-async function openLoadViewModal() {
-    const container = document.getElementById('viewsList');
-    container.innerHTML = '<div class="empty-state">Loading views...</div>';
-    document.getElementById('loadViewModal').classList.add('active');
+        function openLoadViewModal() {
+            const savedViews = JSON.parse(localStorage.getItem(VIEWS_STORAGE_KEY) || '[]');
+            const container = document.getElementById('viewsList');
 
-    try {
-        const result = await apiRequest('GET');
-        if (result.success && result.views && result.views.length > 0) {
-            container.innerHTML = result.views
-                .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
-                .map(view => {
+            if (savedViews.length === 0) {
+                container.innerHTML = '<div class="empty-state">No saved views found</div>';
+            } else {
+                container.innerHTML = savedViews.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)).map(view => {
                     const date = new Date(view.timestamp).toLocaleString();
-                    const watchCount = view.watchCount || 0;
+                    const watchCount = view.watches ? view.watches.length : 0;
                     return '<div class="view-item">' +
                         '<div class="view-item-info" onclick="loadView(' + view.id + ')">' +
                             '<h4>' + escapeHtml(view.name) + '</h4>' +
-                            '<span>' + date + ' &bull; ' + watchCount + ' watches</span>' +
+                            '<span>' + date + ' • ' + watchCount + ' watches</span>' +
                         '</div>' +
                         '<div class="view-item-actions">' +
                             '<button class="btn btn-sm btn-danger" onclick="event.stopPropagation(); deleteViewItem(' + view.id + ')">Delete</button>' +
                         '</div>' +
                     '</div>';
                 }).join('');
-        } else {
-            container.innerHTML = '<div class="empty-state">No saved views found</div>';
+            }
+
+            document.getElementById('loadViewModal').classList.add('active');
         }
-    } catch (err) {
-        container.innerHTML = '<div class="empty-state">Error loading views: ' + escapeHtml(err.message) + '</div>';
-    }
-}
 
-function closeLoadViewModal() {
-    document.getElementById('loadViewModal').classList.remove('active');
-}
+        function closeLoadViewModal() {
+            document.getElementById('loadViewModal').classList.remove('active');
+        }
 
-async function loadView(viewId) {
-    try {
-        const result = await apiRequest('POST', { action: 'load', id: viewId });
-        if (result.success && result.view) {
-            const view = result.view;
+        function loadView(viewId) {
+            const savedViews = JSON.parse(localStorage.getItem(VIEWS_STORAGE_KEY) || '[]');
+            const view = savedViews.find(v => v.id === viewId);
+            if (!view || !view.watches) return;
+
             if (confirm('Load view "' + view.name + '"? This will replace your current data.')) {
                 watches = JSON.parse(JSON.stringify(view.watches));
                 watches.forEach(w => calculateWatch(w));
-                await loadMostRecentView();
+                updateAll();
                 closeLoadViewModal();
             }
-        } else {
-            alert('Failed to load view: ' + (result.error || 'Unknown error'));
         }
-    } catch (err) {
-        alert('Error loading view: ' + err.message);
-    }
-}
 
-async function deleteViewItem(viewId) {
-    if (!confirm('Delete this saved view?')) return;
-    
-    try {
-        const result = await apiRequest('DELETE', { id: viewId });
-        if (result.success) {
-            openLoadViewModal(); // Refresh the list
-        } else {
-            alert('Failed to delete view: ' + (result.error || 'Unknown error'));
+        function deleteViewItem(viewId) {
+            const savedViews = JSON.parse(localStorage.getItem(VIEWS_STORAGE_KEY) || '[]');
+            const updatedViews = savedViews.filter(v => v.id !== viewId);
+            localStorage.setItem(VIEWS_STORAGE_KEY, JSON.stringify(updatedViews));
+            openLoadViewModal();
         }
-    } catch (err) {
-        alert('Error deleting view: ' + err.message);
-    }
-}
 
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
 
         function updateCharts() {
             const soldWatches = watches.filter(w => w.status === 'Sold' && w.saleDate);
@@ -1415,14 +1353,14 @@ function escapeHtml(text) {
                 imageUrl: ''
             };
             watches.push(newWatch);
-            await loadMostRecentView();
+            updateAll();
             openEditModal(newId);
         }
 
         function deleteWatch(id) {
             if (confirm('Are you sure you want to delete this watch?')) {
                 watches = watches.filter(w => w.id !== id);
-                await loadMostRecentView();
+                updateAll();
             }
         }
 
@@ -1449,7 +1387,7 @@ function escapeHtml(text) {
                     if (Array.isArray(imported)) {
                         watches = imported;
                         watches.forEach(w => calculateWatch(w));
-                        await loadMostRecentView();
+                        updateAll();
                         alert('Data imported successfully!');
                     } else {
                         alert('Invalid file format');
