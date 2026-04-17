@@ -808,14 +808,16 @@
             try {
                 const result = await apiRequest('GET');
                 if (result.success && result.views && result.views.length > 0) {
-                    // Sort by timestamp descending and load the most recent view
+                    // Sort by timestamp descending and get the most recent view
                     const sortedViews = result.views.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
                     const mostRecentView = sortedViews[0];
 
-                    if (mostRecentView.watches && mostRecentView.watches.length > 0) {
-                        watches = JSON.parse(JSON.stringify(mostRecentView.watches));
+                    // Make a second POST request to get the full view data including watches
+                    const loadResult = await apiRequest('POST', { action: 'load', id: mostRecentView.id });
+                    if (loadResult.success && loadResult.view && loadResult.view.watches) {
+                        watches = JSON.parse(JSON.stringify(loadResult.view.watches));
                         watches.forEach(w => calculateWatch(w));
-                        console.log('Loaded view: ' + mostRecentView.name + ' (' + mostRecentView.timestamp + ')');
+                        console.log('Loaded view: ' + loadResult.view.name + ' (' + loadResult.view.timestamp + ')');
                     }
                 }
             } catch (err) {
