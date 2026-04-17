@@ -120,6 +120,8 @@
         <div class="charts-grid">
             <div class="chart-card"><h3>Inventory by Brand</h3><canvas id="brandChart"></canvas></div>
             <div class="chart-card"><h3>Profit/Loss by Watch</h3><canvas id="profitChart"></canvas></div>
+            <div class="chart-card"><h3>Profit & Revenue by Brand</h3><canvas id="brandRevenueChart"></canvas></div>
+            <div class="chart-card"><h3>Profit & Revenue Over Time</h3><canvas id="timeChart"></canvas></div>
         </div>
     </div>
 
@@ -198,7 +200,23 @@
         function updateAll() { renderTable(); updateKPIs(); updateCharts(); }
         function renderTable() { const tbody = document.getElementById('inventoryTable'); tbody.innerHTML = watches.map(w => { const img = w.image || w.imageUrl || 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2250%22 height=%2250%22><rect fill=%22%23f0f0f0%22 width=%2250%22 height=%2250%22/><text fill=%22%23999%22 x=%2225%22 y=%2225%22 text-anchor=%22middle%22>⌚</text></svg>'; const statusClass = w.status === 'In Stock' ? 'status-instock' : w.status === 'Sold' ? 'status-sold' : 'status-pending'; const profitClass = (w.profit || 0) >= 0 ? 'success' : 'danger'; return '<tr><td><img src="' + img + '" class="thumbnail" onclick="openModal(' + w.id + ')"></td><td>' + w.sku + '</td><td>' + w.brand + '</td><td>' + w.model + '</td><td>' + w.year + '</td><td><span class="status-badge ' + statusClass + '">' + w.status + '</span></td><td>' + formatCurrency(w.purchasePrice) + '</td><td>' + formatCurrency(w.salePrice) + '</td><td class="' + profitClass + '">' + formatCurrency(w.profit) + '</td><td>' + formatPercent(w.margin) + '</td><td class="actions"><button class="btn btn-primary btn-small" onclick="openModal(' + w.id + ')">Edit</button></td></tr>'; }).join(''); }
         function updateKPIs() { const sold = watches.filter(w => w.status === 'Sold'); const inStock = watches.filter(w => w.status === 'In Stock'); const revenue = sold.reduce((s, w) => s + (w.salePrice || 0), 0); const costs = watches.reduce((s, w) => s + (w.totalCost || 0), 0); const profit = sold.reduce((s, w) => s + (w.profit || 0), 0); const inventory = inStock.reduce((s, w) => s + (w.totalCost || 0), 0); document.getElementById('kpiRevenue').textContent = formatCurrency(revenue); document.getElementById('kpiCosts').textContent = formatCurrency(costs); document.getElementById('kpiProfit').textContent = formatCurrency(profit); document.getElementById('kpiProfit').className = 'value ' + (profit >= 0 ? 'success' : 'danger'); document.getElementById('kpiInventory').textContent = formatCurrency(inventory); }
-        function updateCharts() { const brandData = {}; watches.forEach(w => brandData[w.brand] = (brandData[w.brand] || 0) + 1); if (charts.brand) charts.brand.destroy(); charts.brand = new Chart(document.getElementById('brandChart'), { type: 'doughnut', data: { labels: Object.keys(brandData), datasets: [{ data: Object.values(brandData), backgroundColor: ['#1a237e', '#3949ab', '#5c6bc0', '#7986cb', '#9fa8da', '#c5cae9'] }] }, options: { responsive: true, maintainAspectRatio: true } }); const profits = watches.map(w => w.profit || 0); if (charts.profit) charts.profit.destroy(); charts.profit = new Chart(document.getElementById('profitChart'), { type: 'bar', data: { labels: watches.map(w => w.sku), datasets: [{ label: 'Profit', data: profits, backgroundColor: profits.map(p => p >= 0 ? '#4caf50' : '#f44336') }] }, options: { responsive: true, maintainAspectRatio: true, scales: { y: { beginAtZero: true } } } }); }
+        function updateCharts() {
+            const brandData = {}; watches.forEach(w => brandData[w.brand] = (brandData[w.brand] || 0) + 1);
+            if (charts.brand) charts.brand.destroy();
+            charts.brand = new Chart(document.getElementById('brandChart'), { type: 'doughnut', data: { labels: Object.keys(brandData), datasets: [{ data: Object.values(brandData), backgroundColor: ['#1a237e', '#3949ab', '#5c6bc0', '#7986cb', '#9fa8da', '#c5cae9'] }] }, options: { responsive: true, maintainAspectRatio: true } });
+            const profits = watches.map(w => w.profit || 0);
+            if (charts.profit) charts.profit.destroy();
+            charts.profit = new Chart(document.getElementById('profitChart'), { type: 'bar', data: { labels: watches.map(w => w.sku), datasets: [{ label: 'Profit', data: profits, backgroundColor: profits.map(p => p >= 0 ? '#4caf50' : '#f44336') }] }, options: { responsive: true, maintainAspectRatio: true, scales: { y: { beginAtZero: true } } } });
+            const brandRevenueData = {}; const brandProfitData = {};
+            watches.forEach(w => { if (!brandRevenueData[w.brand]) { brandRevenueData[w.brand] = 0; brandProfitData[w.brand] = 0; } brandRevenueData[w.brand] += (w.salePrice || 0); brandProfitData[w.brand] += (w.profit || 0); });
+            const brandLabels = Object.keys(brandRevenueData);
+            if (charts.brandRevenue) charts.brandRevenue.destroy();
+            charts.brandRevenue = new Chart(document.getElementById('brandRevenueChart'), { type: 'bar', data: { labels: brandLabels, datasets: [{ label: 'Revenue', data: brandLabels.map(b => brandRevenueData[b]), backgroundColor: '#3949ab' }, { label: 'Profit', data: brandLabels.map(b => brandProfitData[b]), backgroundColor: '#4caf50' }] }, options: { responsive: true, maintainAspectRatio: true, scales: { x: { stacked: false }, y: { stacked: false, beginAtZero: true } } } });
+            const timeData = {}; watches.forEach(w => { const date = w.saleDate || w.purchaseDate; if (date) { const month = date.substring(0, 7); if (!timeData[month]) { timeData[month] = { revenue: 0, profit: 0 }; } if (w.salePrice) timeData[month].revenue += w.salePrice; if (w.profit) timeData[month].profit += w.profit; } });
+            const timeLabels = Object.keys(timeData).sort();
+            if (charts.time) charts.time.destroy();
+            charts.time = new Chart(document.getElementById('timeChart'), { type: 'line', data: { labels: timeLabels, datasets: [{ label: 'Revenue', data: timeLabels.map(t => timeData[t].revenue), borderColor: '#3949ab', backgroundColor: 'rgba(57,73,171,0.1)', fill: true, tension: 0.3 }, { label: 'Profit', data: timeLabels.map(t => timeData[t].profit), borderColor: '#4caf50', backgroundColor: 'rgba(76,175,80,0.1)', fill: true, tension: 0.3 }] }, options: { responsive: true, maintainAspectRatio: true, scales: { y: { beginAtZero: true } } } });
+        }
         function showImagePreview(src) { const p = document.getElementById('imagePreview'); if (src) { p.src = src; p.style.display = 'block'; } else { p.style.display = 'none'; } }
         function openModal(id) { currentEditId = id; document.getElementById('modalTitle').textContent = id ? 'Edit Watch' : 'Add Watch'; document.getElementById('deleteBtn').style.display = id ? 'inline-flex' : 'none'; if (id) { const w = watches.find(x => x.id === id); document.getElementById('editSku').value = w.sku || ''; document.getElementById('editBrand').value = w.brand || ''; document.getElementById('editModel').value = w.model || ''; document.getElementById('editReference').value = w.reference || ''; document.getElementById('editYear').value = w.year || ''; document.getElementById('editSize').value = w.size || ''; document.getElementById('editDial').value = w.dial || ''; document.getElementById('editCase').value = w.caseMat || ''; document.getElementById('editStrap').value = w.strap || ''; document.getElementById('editStatus').value = w.status || 'In Stock'; document.getElementById('editPurchaseDate').value = w.purchaseDate || ''; document.getElementById('editPurchasePrice').value = w.purchasePrice || ''; document.getElementById('editTariffs').value = w.tariffsTax || ''; document.getElementById('editService').value = w.service || ''; document.getElementById('editOtherCosts').value = w.otherCosts || ''; document.getElementById('editTotalCost').value = w.totalCost || ''; document.getElementById('editSaleDate').value = w.saleDate || ''; document.getElementById('editSalePrice').value = w.salePrice || ''; document.getElementById('editPlatform').value = w.platform || ''; document.getElementById('editPlatformFee').value = w.platformFee || ''; document.getElementById('editShipping').value = w.shipping || ''; document.getElementById('editNet').value = w.net || ''; document.getElementById('editProfit').value = w.profit || ''; document.getElementById('editMargin').value = w.margin || ''; document.getElementById('editImageUrl').value = w.imageUrl || ''; showImagePreview(w.imageUrl || w.image || ''); } else { document.querySelectorAll('#editModal input').forEach(i => i.value = ''); document.getElementById('editStatus').value = 'In Stock'; document.getElementById('imagePreview').style.display = 'none'; } document.getElementById('editModal').classList.add('active'); }
         function closeModal() { document.getElementById('editModal').classList.remove('active'); currentEditId = null; }
@@ -231,10 +249,24 @@
                 if (!data.success || !data.views || data.views.length === 0) {
                     c.innerHTML = '<p style="text-align:center;color:#666;padding:20px;">No saved views on server.</p>';
                 } else {
-                    c.innerHTML = data.views.map(v => '<div style="padding:16px;border-bottom:1px solid #eee;display:flex;justify-content:space-between;align-items:center;"><div><div style="font-weight:600;">' + v.name + '</div><div style="font-size:12px;color:#666;">' + new Date(v.timestamp).toLocaleString() + ' - ' + v.watchCount + ' watches</div></div><button class="btn btn-primary btn-small" onclick="loadViewData(' + v.id + ')">Load</button></div>').join('');
+                    c.innerHTML = data.views.map(v => '<div style="padding:16px;border-bottom:1px solid #eee;display:flex;justify-content:space-between;align-items:center;gap:12px;"><div style="flex:1;"><div style="font-weight:600;">' + v.name + '</div><div style="font-size:12px;color:#666;">' + new Date(v.timestamp).toLocaleString() + ' - ' + v.watchCount + ' watches</div></div><div style="display:flex;gap:8px;"><button class="btn btn-primary btn-small" onclick="loadViewData(' + v.id + ')">Load</button><button class="btn btn-danger btn-small" onclick="deleteView(' + v.id + ', event)">Delete</button></div></div>').join('');
                 }
                 document.getElementById('loadViewModal').classList.add('active');
             } catch (err) { alert('Error loading views: ' + err.message); }
+        }
+        async function deleteView(id, event) {
+            event.stopPropagation();
+            if (!confirm('Delete this saved view?')) return;
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json', 'X-Password': CORRECT_PASSWORD },
+                    body: JSON.stringify({ id: id })
+                });
+                const data = await response.json();
+                if (data.success) { loadView(); }
+                else { alert('Error: ' + (data.error || 'Failed to delete')); }
+            } catch (err) { alert('Error deleting view: ' + err.message); }
         }
         async function loadViewData(id) {
             try {
