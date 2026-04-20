@@ -91,7 +91,7 @@ th.sort-desc::after { content: ' ▼'; font-size: 10px; }
         <div class="header">
             <div style="display:flex;align-items:center;gap:16px;"><img src="logo.jpg?v=2" style="height:50px;width:auto;object-fit:contain;background:white;padding:4px;border-radius:8px;" onerror="this.style.display='none'"><h1 style="margin:0;">Watch Inventory & P&L Tracker</h1></div>
             <div class="header-actions">
-                <button class="btn btn-secondary" onclick="exportData()">📥 Export</button>
+                <button class="btn btn-secondary" onclick="exportJSON()">📥 Export JSON</button><button class="btn btn-secondary" onclick="exportCSV()">📄 Export CSV</button>
                 <button class="btn btn-secondary" onclick="document.getElementById('importFile').click()">📤 Import</button>
                 <input type="file" id="importFile" style="display:none" accept=".json" onchange="importData(this)">
                 <button class="btn btn-secondary" onclick="saveView()">💾 Save View</button>
@@ -254,7 +254,28 @@ function renderTable() { const tbody = document.getElementById('inventoryTable')
         function calcTotals() { const pp = parseFloat(document.getElementById('editPurchasePrice').value) || 0; const tar = parseFloat(document.getElementById('editTariffs').value) || 0; const svc = parseFloat(document.getElementById('editService').value) || 0; const other = parseFloat(document.getElementById('editOtherCosts').value) || 0; const tc = pp + tar + svc + other; document.getElementById('editTotalCost').value = tc.toFixed(2); const sp = parseFloat(document.getElementById('editSalePrice').value) || 0; const pf = parseFloat(document.getElementById('editPlatformFee').value) || 0; const ship = parseFloat(document.getElementById('editShipping').value) || 0; const net = sp - pf - ship; document.getElementById('editNet').value = net.toFixed(2); const profit = net - tc; document.getElementById('editProfit').value = profit.toFixed(2); const margin = sp > 0 ? (profit / sp) * 100 : 0; document.getElementById('editMargin').value = margin.toFixed(2); }
         function saveWatch() { const imgSrc = document.getElementById('imagePreview').style.display === 'block' ? document.getElementById('imagePreview').src : ''; const isUploaded = imgSrc && imgSrc.startsWith('data:'); const w = { id: currentEditId || Math.max(...watches.map(x => x.id), 0) + 1, sku: document.getElementById('editSku').value, brand: document.getElementById('editBrand').value, model: document.getElementById('editModel').value, reference: document.getElementById('editReference').value, year: document.getElementById('editYear').value, size: parseFloat(document.getElementById('editSize').value) || null, dial: document.getElementById('editDial').value, caseMat: document.getElementById('editCase').value, strap: document.getElementById('editStrap').value, status: document.getElementById('editStatus').value, purchaseDate: document.getElementById('editPurchaseDate').value, purchasePrice: parseFloat(document.getElementById('editPurchasePrice').value) || 0, tariffsTax: parseFloat(document.getElementById('editTariffs').value) || 0, service: parseFloat(document.getElementById('editService').value) || 0, otherCosts: parseFloat(document.getElementById('editOtherCosts').value) || 0, totalCost: parseFloat(document.getElementById('editTotalCost').value) || 0, serial: document.getElementById('editSerial').value, purchasedFrom: document.getElementById('editPurchasedFrom').value, buyer: document.getElementById('editBuyer').value, buyerContact: document.getElementById('editBuyerContact').value, saleDate: document.getElementById('editSaleDate').value, salePrice: parseFloat(document.getElementById('editSalePrice').value) || 0, platform: document.getElementById('editPlatform').value, platformFee: parseFloat(document.getElementById('editPlatformFee').value) || 0, shipping: parseFloat(document.getElementById('editShipping').value) || 0, net: parseFloat(document.getElementById('editNet').value) || 0, profit: parseFloat(document.getElementById('editProfit').value) || 0, margin: parseFloat(document.getElementById('editMargin').value) || 0, imageUrl: isUploaded ? '' : document.getElementById('editImageUrl').value, image: isUploaded ? imgSrc : '' }; if (currentEditId) { const i = watches.findIndex(x => x.id === currentEditId); watches[i] = w; } else { watches.push(w); } closeModal(); updateAll(); }
         function deleteWatch() { if (currentEditId && confirm('Delete this watch?')) { watches = watches.filter(w => w.id !== currentEditId); closeModal(); updateAll(); } }
-        function exportData() { const b = new Blob([JSON.stringify(watches, null, 2)], { type: 'application/json' }); const u = URL.createObjectURL(b); const a = document.createElement('a'); a.href = u; a.download = 'gtv_inventory_' + new Date().toISOString().split('T')[0] + '.json'; a.click(); URL.revokeObjectURL(u); }
+        function exportJSON() { const b = new Blob([JSON.stringify(watches, null, 2)], { type: 'application/json' }); const u = URL.createObjectURL(b); const a = document.createElement('a'); a.href = u; a.download = 'gtv_inventory_' + new Date().toISOString().split('T')[0] + '.json'; a.click(); URL.revokeObjectURL(u); }
+        function exportCSV() {
+            const headers = ['SKU','Brand','Model','Reference','Serial','Year','Size','Dial','Case','Strap','Status','Purchase Date','Purchase Price','Tariffs/Tax','Service','Other Costs','Total Cost','Purchased From','Sale Date','Sale Price','Platform','Platform Fee','Shipping','Net Sale','Profit','Margin %','Buyer','Buyer Contact','Image URL'];
+            const rows = watches.map(w => [
+                w.sku, w.brand, w.model, w.reference, w.serial, w.year, w.size, w.dial, w.caseMat, w.strap, w.status,
+                w.purchaseDate, w.purchasePrice, w.tariffsTax, w.service, w.otherCosts, w.totalCost, w.purchasedFrom,
+                w.saleDate, w.salePrice, w.platform, w.platformFee, w.shipping, w.net, w.profit, w.margin,
+                w.buyer, w.buyerContact, w.imageUrl
+            ].map(v => {
+                if (v === null || v === undefined) return '';
+                const s = String(v).replace(/"/g, '""');
+                return s.includes(',') || s.includes('"') || s.includes('\n') ? '"' + s + '"' : s;
+            }).join(','));
+            const csv = [headers.join(','), ...rows].join('\n');
+            const b = new Blob([csv], { type: 'text/csv' });
+            const u = URL.createObjectURL(b);
+            const a = document.createElement('a');
+            a.href = u;
+            a.download = 'gtv_inventory_' + new Date().toISOString().split('T')[0] + '.csv';
+            a.click();
+            URL.revokeObjectURL(u);
+        }
         function importData(input) { if (input.files && input.files[0]) { const r = new FileReader(); r.onload = function(e) { try { watches = JSON.parse(e.target.result); updateAll(); alert('Imported!'); } catch (err) { alert('Error: ' + err.message); } }; r.readAsText(input.files[0]); } }
         const API_URL = '/gtv/api';
         async function saveView() {
