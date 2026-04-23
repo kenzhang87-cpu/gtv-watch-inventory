@@ -125,6 +125,7 @@ th.sort-desc::after { content: ' ▼'; font-size: 10px; }
             <div class="chart-card"><h3>Profit/Loss by Watch</h3><canvas id="profitChart"></canvas></div>
             <div class="chart-card"><h3>Profit & Revenue by Brand</h3><canvas id="brandRevenueChart"></canvas></div>
             <div class="chart-card"><h3>Profit & Revenue Over Time</h3><canvas id="timeChart"></canvas></div>
+            <div class="chart-card"><h3>Cost Breakdown by Type</h3><canvas id="costBreakdownChart"></canvas></div>
         </div>
     </div>
 
@@ -245,6 +246,63 @@ function renderTable() { const tbody = document.getElementById('inventoryTable')
             const timeLabels = Object.keys(timeData).sort();
             if (charts.time) charts.time.destroy();
             charts.time = new Chart(document.getElementById('timeChart'), { type: 'line', data: { labels: timeLabels, datasets: [{ label: 'Revenue', data: timeLabels.map(t => timeData[t].revenue), borderColor: '#3949ab', backgroundColor: 'rgba(57,73,171,0.1)', fill: true, tension: 0.3 }, { label: 'Profit', data: timeLabels.map(t => timeData[t].profit), borderColor: '#4caf50', backgroundColor: 'rgba(76,175,80,0.1)', fill: true, tension: 0.3 }] }, options: { responsive: true, maintainAspectRatio: true, scales: { y: { beginAtZero: true } } } });
+            // Cost Breakdown Pie Chart
+            const costData = {
+                'Purchase Price': watches.reduce((s, w) => s + (w.purchasePrice || 0), 0),
+                'Tariffs/Tax': watches.reduce((s, w) => s + (w.tariffsTax || 0), 0),
+                'Service': watches.reduce((s, w) => s + (w.service || 0), 0),
+                'Other Costs': watches.reduce((s, w) => s + (w.otherCosts || 0), 0),
+                'Platform Fees': watches.reduce((s, w) => s + (w.platformFee || 0), 0),
+                'Shipping': watches.reduce((s, w) => s + (w.shipping || 0), 0)
+            };
+            // Filter out zero values
+            const costLabels = Object.keys(costData).filter(k => costData[k] > 0);
+            const costValues = costLabels.map(k => costData[k]);
+            const costColors = ['#1a237e', '#3949ab', '#5c6bc0', '#7986cb', '#9fa8da', '#c5cae9'];
+            if (charts.costBreakdown) charts.costBreakdown.destroy();
+            charts.costBreakdown = new Chart(document.getElementById('costBreakdownChart'), {
+                type: 'pie',
+                data: {
+                    labels: costLabels,
+                    datasets: [{
+                        data: costValues,
+                        backgroundColor: costColors.slice(0, costLabels.length)
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                boxWidth: 12,
+                                padding: 10,
+                                generateLabels: function(chart) {
+                                    const data = chart.data;
+                                    const total = data.datasets[0].data.reduce((a, b) => a + b, 0);
+                                    return data.labels.map((label, i) => ({
+                                        text: label + ': ' + formatCurrency(data.datasets[0].data[i]) + ' (' + ((data.datasets[0].data[i] / total) * 100).toFixed(1) + '%)',
+                                        fillStyle: data.datasets[0].backgroundColor[i],
+                                        hidden: false,
+                                        index: i
+                                    }));
+                                }
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const value = context.raw;
+                                    const pct = ((value / total) * 100).toFixed(1);
+                                    return context.label + ': ' + formatCurrency(value) + ' (' + pct + '%)';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
         }
         function showImagePreview(src) { const p = document.getElementById('imagePreview'); if (src) { p.src = src; p.style.display = 'block'; } else { p.style.display = 'none'; } }
         function openModal(id) { currentEditId = id; document.getElementById('modalTitle').textContent = id ? 'Edit Watch' : 'Add Watch'; document.getElementById('deleteBtn').style.display = id ? 'inline-flex' : 'none'; if (id) { const w = watches.find(x => x.id === id); document.getElementById('editSku').value = w.sku || ''; document.getElementById('editBrand').value = w.brand || ''; document.getElementById('editModel').value = w.model || ''; document.getElementById('editReference').value = w.reference || ''; document.getElementById('editSerial').value = w.serial || ''; document.getElementById('editYear').value = w.year || ''; document.getElementById('editSize').value = w.size || ''; document.getElementById('editDial').value = w.dial || ''; document.getElementById('editCase').value = w.caseMat || ''; document.getElementById('editStrap').value = w.strap || ''; document.getElementById('editStatus').value = w.status || 'In Stock'; document.getElementById('editPurchaseDate').value = w.purchaseDate || ''; document.getElementById('editPurchasePrice').value = w.purchasePrice || ''; document.getElementById('editTariffs').value = w.tariffsTax || ''; document.getElementById('editService').value = w.service || ''; document.getElementById('editOtherCosts').value = w.otherCosts || ''; document.getElementById('editTotalCost').value = w.totalCost || ''; document.getElementById('editPurchasedFrom').value = w.purchasedFrom || ''; document.getElementById('editSaleDate').value = w.saleDate || ''; document.getElementById('editBuyer').value = w.buyer || ''; document.getElementById('editBuyerContact').value = w.buyerContact || ''; document.getElementById('editSalePrice').value = w.salePrice || ''; document.getElementById('editPlatform').value = w.platform || ''; document.getElementById('editPlatformFee').value = w.platformFee || ''; document.getElementById('editShipping').value = w.shipping || ''; document.getElementById('editNet').value = w.net || ''; document.getElementById('editProfit').value = w.profit || ''; document.getElementById('editMargin').value = w.margin || ''; document.getElementById('editImageUrl').value = w.imageUrl || ''; showImagePreview(w.imageUrl || w.image || ''); } else { document.querySelectorAll('#editModal input').forEach(i => i.value = ''); document.getElementById('editStatus').value = 'In Stock'; document.getElementById('imagePreview').style.display = 'none'; } document.getElementById('editModal').classList.add('active'); }
